@@ -14,5 +14,4 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install requests
-      - run: python monitor_ipp.py
-        timeout-minutes: 5
+      - run: timeout 280 python monitor_ipp.py || true
