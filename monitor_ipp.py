@@ -1,7 +1,6 @@
 import requests
 import smtplib
 import json
-import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
@@ -10,7 +9,6 @@ from datetime import datetime
 GMAIL_USUARIO  = "alfonso.palmou@gmail.com"   # el Gmail desde el que se envía
 GMAIL_PASSWORD = "bali gwoo sciz iqln"        # contraseña de aplicación (ver abajo)
 DESTINATARIO   = "alfonso.palmou@gmail.com"
-INTERVALO_SEG  = 20 * 60                  # 20 minutos
 INICIO_MONITOREO = datetime(2026, 4, 14)  # solo IPPs desde esta fecha
 # ───────────────────────────────────────────────────────────────
 
@@ -92,12 +90,8 @@ def chequear():
         print(f"  Sin nuevas IPPs. Total causas: {lista['totalElements']}")
 
 # ── INICIO ─────────────────────────────────────────────────────
-print("✅ Monitor IPP iniciado. Chequeando cada 20 minutos.")
-print(f"   Notificaciones a: {DESTINATARIO}\n")
-
-while True:
-    try:
-        chequear()
-    except Exception as e:
-        print(f"  ❌ Error: {e}")
-    time.sleep(INTERVALO_SEG) 
+print("Chequeando IPPs nuevas...")
+try:
+    chequear()
+except Exception as e:
+    print(f"Error: {e}")
