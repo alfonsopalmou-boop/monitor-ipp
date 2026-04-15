@@ -20,77 +20,79 @@ HEADERS   = {"Accept": "application/json", "Content-Type": "application/x-www-fo
 ids_conocidos = set()
 
 def obtener_lista():
-    body = {"info": json.dumps({
-        "filter": json.dumps({"identificador": "habeas corpus", "causas": "0"}),
-        "tipoBusqueda": "CAU",
-        "page": 0,
-        "size": 10
-    })}
-    r = requests.post(API_URL, data=body, headers=HEADERS, timeout=15)
-    r.raise_for_status()
-    return r.json()
+        body = {"info": json.dumps({
+                    "filter": json.dumps({"identificador": "habeas corpus", "causas": "0"}),
+                    "tipoBusqueda": "CAU",
+                    "page": 0,
+                    "size": 10
+        })}
+        r = requests.post(API_URL, data=body, headers=HEADERS, timeout=15)
+        r.raise_for_status()
+        return r.json()
 
 def obtener_encabezado(exp_id):
-    r = requests.get(ENCAB_URL, params={"expId": exp_id}, headers=HEADERS, timeout=10)
-    if r.status_code == 200:
-        return r.json()
-    return None
+        r = requests.get(ENCAB_URL, params={"expId": exp_id}, headers=HEADERS, timeout=10)
+        if r.status_code == 200:
+                    return r.json()
+                return None
 
 def enviar_telegram(mensaje):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": mensaje}, timeout=10)
 
-def enviar_mail(ipps_nuevas):
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"Nueva IPP detectada - Habeas Corpus ({datetime.now().strftime('%d/%m/%Y %H:%M')})"
-    msg["From"]    = GMAIL_USUARIO
-    msg["To"]      = DESTINATARIO
-    cuerpo = "Se detectaron las siguientes IPPs nuevas en el EJE:\n\n"
-    for ipp in ipps_nuevas:
-        cuerpo += f"  - {ipp['identificador']}\n"
-        cuerpo += f"    Caratula: {ipp['caratula']}\n"
-        cuerpo += f"    Fecha: {ipp['fecha']}\n"
-        cuerpo += f"    Ver: https://eje.juscaba.gob.ar/iol-ui/p/expedientes\n\n"
-    msg.attach(MIMEText(cuerpo, "plain"))
+def enviar_mail(causas_nuevas):
+        msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"Nueva causa detectada - Habeas Corpus ({datetime.now().strftime('%d/%m/%Y %H:%M')})"
+    msg["From"] = GMAIL_USUARIO
+    msg["To"] = DESTINATARIO
+    cuerpo = "Se detectaron las siguientes causas nuevas en el EJE:\n\n"
+    for c in causas_nuevas:
+                cuerpo += f" - {c['identificador']}\n"
+                cuerpo += f"   Caratula: {c['caratula']}\n"
+                cuerpo += f"   Fecha: {c['fecha']}\n"
+                cuerpo += f"   Ver: https://eje.juscaba.gob.ar/iol-ui/p/expedientes\n\n"
+            msg.attach(MIMEText(cuerpo, "plain"))
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(GMAIL_USUARIO, GMAIL_PASSWORD)
-        server.sendmail(GMAIL_USUARIO, DESTINATARIO, msg.as_string())
+                server.login(GMAIL_USUARIO, GMAIL_PASSWORD)
+                server.sendmail(GMAIL_USUARIO, DESTINATARIO, msg.as_string())
 
 def chequear():
-    print(f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] Chequeando...")
+        print(f"[{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}] Chequeando...")
     lista = obtener_lista()
     exp_ids = [e["expId"] for e in lista["content"]]
-    ipps_nuevas = []
+    causas_nuevas = []
     for exp_id in exp_ids:
-        enc = obtener_encabezado(exp_id)
-        if not enc or enc.get("tipoExpediente") != "IPP":
-            continue
+                enc = obtener_encabezado(exp_id)
+                if not enc:
+                                continue
+                            tipo = enc.get("tipoExpediente", "?")
         cuij = enc.get("cuij", str(exp_id))
+        print(f"  Revisando: {tipo} {cuij}")
         if cuij in ids_conocidos:
-            continue
-        ids_conocidos.add(cuij)
+                        continue
+                    ids_conocidos.add(cuij)
         fecha_ts = enc.get("fechaInicio", 0)
         fecha_dt = datetime.fromtimestamp(fecha_ts / 1000) if fecha_ts else None
         if fecha_dt and fecha_dt >= INICIO_MONITOREO:
-            ipps_nuevas.append({
-                "identificador": f"IPP {cuij}",
-                "caratula": enc.get("caratula", ""),
-                "fecha": fecha_dt.strftime("%d/%m/%Y %H:%M")
-            })
-            print(f"NUEVA IPP: IPP {cuij} - {enc.get('caratula', '')}")
-    if ipps_nuevas:
-        enviar_mail(ipps_nuevas)
-        for ipp in ipps_nuevas:
-            enviar_telegram(f"🚨 NUEVA IPP HABEAS CORPUS\n{ipp['identificador']}\n{ipp['caratula']}\nFecha: {ipp['fecha']}\nhttps://eje.juscaba.gob.ar/iol-ui/p/expedientes")
-    else:
-        print(f"Sin nuevas IPPs. Total causas: {lista['totalElements']}")
+                        causas_nuevas.append({
+                                            "identificador": f"{tipo} {cuij}",
+                                            "caratula": enc.get("caratula", ""),
+                                            "fecha": fecha_dt.strftime("%d/%m/%Y %H:%M")
+                        })
+                        print(f"  NUEVA CAUSA: {tipo} {cuij} - {enc.get('caratula', '')}")
+                if causas_nuevas:
+                            enviar_mail(causas_nuevas)
+                            for c in causas_nuevas:
+                                            enviar_telegram(f"\U0001f6a8 NUEVA CAUSA HABEAS CORPUS\n{c['identificador']}\n{c['caratula']}\nFecha: {c['fecha']}\nhttps://eje.juscaba.gob.ar/iol-ui/p/expedientes")
+                else:
+                            print(f"Sin causas nuevas. Total en EJE: {lista['totalElements']}")
 
-print("Chequeando IPPs nuevas...")
+print("Chequeando causas nuevas...")
 try:
-    chequear()
+        chequear()
 except Exception as e:
-    print(f"Error: {e}")
+    print(f"Error en primera ejecucion: {e}")
 try:
-    chequear()
+        chequear()
 except Exception as e:
-    print(f"Error: {e}")
+    print(f"Error en segunda ejecucion: {e}")
