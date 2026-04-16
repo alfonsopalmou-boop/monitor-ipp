@@ -32,8 +32,8 @@ def obtener_lista():
 def obtener_encabezado(exp_id):
         r = requests.get(ENCAB_URL, params={"expId": exp_id}, headers=HEADERS, timeout=10)
         if r.status_code == 200:
-                    return r.json()
-                return None
+                return r.json()
+        return None
 
 
 def enviar_telegram(mensaje):
