@@ -1,9 +1,10 @@
 import requests
 import smtplib
 import json
+import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 GMAIL_USUARIO = "alfonso.palmou@gmail.com"
 GMAIL_PASSWORD = "bali gwoo sciz iqln"
@@ -14,7 +15,21 @@ TELEGRAM_CHAT_ID = "228557280"
 API_URL = "https://eje.juscaba.gob.ar/iol-api/api/public/expedientes/lista"
 ENCAB_URL = "https://eje.juscaba.gob.ar/iol-api/api/public/expedientes/encabezado"
 HEADERS = {"Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded"}
-ids_conocidos = set()
+
+AR_TZ = timezone(timedelta(hours=-3))
+KNOWN_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "known_ids.json")
+
+
+def cargar_conocidos():
+    if os.path.exists(KNOWN_FILE):
+        with open(KNOWN_FILE, "r") as f:
+            return set(json.load(f))
+    return set()
+
+
+def guardar_conocidos(ids):
+    with open(KNOWN_FILE, "w") as f:
+        json.dump(sorted(ids), f)
 
 
 def obtener_lista():
@@ -42,15 +57,16 @@ def enviar_telegram(mensaje):
 
 
 def enviar_mail(causas_nuevas):
+    ahora = datetime.now(AR_TZ)
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = "Nueva causa Habeas Corpus - " + datetime.now().strftime("%d/%m/%Y %H:%M")
+    msg["Subject"] = "Nueva causa Habeas Corpus - " + ahora.strftime("%d/%m/%Y %H:%M")
     msg["From"] = GMAIL_USUARIO
     msg["To"] = DESTINATARIO
     cuerpo = "Causas nuevas detectadas en el EJE:\n\n"
     for c in causas_nuevas:
         cuerpo += " - " + c["identificador"] + "\n"
         cuerpo += "   Caratula: " + c["caratula"] + "\n"
-        cuerpo += "   Fecha: " + c["fecha"] + "\n"
+        cuerpo += "   Fecha inicio: " + c["fecha"] + "\n"
         cuerpo += "   Ver: https://eje.juscaba.gob.ar/iol-ui/p/expedientes\n\n"
     msg.attach(MIMEText(cuerpo, "plain"))
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
@@ -58,8 +74,9 @@ def enviar_mail(causas_nuevas):
         server.sendmail(GMAIL_USUARIO, DESTINATARIO, msg.as_string())
 
 
-def chequear():
-    print("[" + datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "] Chequeando...")
+def chequear(ids_conocidos):
+    ahora = datetime.now(AR_TZ)
+    print("[" + ahora.strftime("%d/%m/%Y %H:%M:%S") + " AR] Chequeando...")
     lista = obtener_lista()
     exp_ids = [e["expId"] for e in lista["content"]]
     causas_nuevas = []
@@ -72,34 +89,36 @@ def chequear():
         print("  " + tipo + " " + cuij)
         if cuij in ids_conocidos:
             continue
-        ids_conocidos.add(cuij)
         fecha_ts = enc.get("fechaInicio", 0)
         if fecha_ts:
-            fecha_dt = datetime.fromtimestamp(fecha_ts / 1000)
+            fecha_dt = datetime.fromtimestamp(fecha_ts / 1000, tz=AR_TZ)
         else:
             fecha_dt = None
-        if fecha_dt and fecha_dt >= INICIO_MONITOREO:
+        if fecha_dt and fecha_dt >= INICIO_MONITOREO.replace(tzinfo=AR_TZ):
+            ids_conocidos.add(cuij)
             causas_nuevas.append({
                 "identificador": tipo + " " + cuij,
                 "caratula": enc.get("caratula", ""),
-                "fecha": fecha_dt.strftime("%d/%m/%Y %H:%M")
+                "fecha": fecha_dt.strftime("%d/%m/%Y")
             })
             print("  NUEVA: " + tipo + " " + cuij + " - " + enc.get("caratula", ""))
+        else:
+            ids_conocidos.add(cuij)
     if causas_nuevas:
         enviar_mail(causas_nuevas)
         for c in causas_nuevas:
-            msg = "NUEVA CAUSA HABEAS CORPUS\n" + c["identificador"] + "\n" + c["caratula"] + "\nFecha: " + c["fecha"] + "\nhttps://eje.juscaba.gob.ar/iol-ui/p/expedientes"
+            msg = "NUEVA CAUSA HABEAS CORPUS\n" + c["identificador"] + "\n" + c["caratula"] + "\nFecha inicio: " + c["fecha"] + "\nhttps://eje.juscaba.gob.ar/iol-ui/p/expedientes"
             enviar_telegram(msg)
     else:
         print("Sin causas nuevas. Total en EJE: " + str(lista["totalElements"]))
+    return ids_conocidos
 
 
 print("Iniciando monitoreo...")
+ids_conocidos = cargar_conocidos()
 try:
-    chequear()
+    ids_conocidos = chequear(ids_conocidos)
 except Exception as e:
-    print("Error 1: " + str(e))
-try:
-    chequear()
-except Exception as e:
-    print("Error 2: " + str(e))
+    print("Error: " + str(e))
+guardar_conocidos(ids_conocidos)
+print("IDs conocidos guardados: " + str(len(ids_conocidos)))
