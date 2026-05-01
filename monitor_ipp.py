@@ -6,12 +6,12 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone, timedelta
 
-GMAIL_USUARIO = "alfonso.palmou@gmail.com"
-GMAIL_PASSWORD = "bali gwoo sciz iqln"
-DESTINATARIO = "alfonso.palmou@gmail.com"
+GMAIL_USUARIO = os.environ["GMAIL_USUARIO"]
+GMAIL_PASSWORD = os.environ["GMAIL_PASSWORD"]
+DESTINATARIO = os.environ.get("DESTINATARIO", GMAIL_USUARIO)
 INICIO_MONITOREO = datetime(2026, 4, 14)
-TELEGRAM_TOKEN = "8432956511:AAE7JqxoDTkXN8_P8wFUzKOGNooSRES0j7k"
-TELEGRAM_CHAT_ID = "228557280"
+TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
+TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 API_URL = "https://eje.juscaba.gob.ar/iol-api/api/public/expedientes/lista"
 ENCAB_URL = "https://eje.juscaba.gob.ar/iol-api/api/public/expedientes/encabezado"
 HEADERS = {"Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded"}
