@@ -53,7 +53,8 @@ def obtener_encabezado(exp_id):
 
 def enviar_telegram(mensaje):
     url = "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage"
-    requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": mensaje}, timeout=10)
+    r = requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": mensaje}, timeout=10)
+    r.raise_for_status()
 
 
 def enviar_mail(causas_nuevas):
@@ -95,8 +96,8 @@ def chequear(ids_conocidos):
         else:
             fecha_dt = None
         if fecha_dt and fecha_dt >= INICIO_MONITOREO.replace(tzinfo=AR_TZ):
-            ids_conocidos.add(cuij)
             causas_nuevas.append({
+                "cuij": cuij,
                 "identificador": tipo + " " + cuij,
                 "caratula": enc.get("caratula", ""),
                 "fecha": fecha_dt.strftime("%d/%m/%Y")
@@ -104,13 +105,29 @@ def chequear(ids_conocidos):
             print("  NUEVA: " + tipo + " " + cuij + " - " + enc.get("caratula", ""))
         else:
             ids_conocidos.add(cuij)
-    if causas_nuevas:
-        enviar_mail(causas_nuevas)
-        for c in causas_nuevas:
-            msg = "NUEVA CAUSA HABEAS CORPUS\n" + c["identificador"] + "\n" + c["caratula"] + "\nFecha inicio: " + c["fecha"] + "\nhttps://eje.juscaba.gob.ar/iol-ui/p/expedientes"
-            enviar_telegram(msg)
-    else:
+    if not causas_nuevas:
         print("Sin causas nuevas. Total en EJE: " + str(lista["totalElements"]))
+        return ids_conocidos
+    telegram_ok = 0
+    for c in causas_nuevas:
+        msg = "NUEVA CAUSA HABEAS CORPUS\n" + c["identificador"] + "\n" + c["caratula"] + "\nFecha inicio: " + c["fecha"] + "\nhttps://eje.juscaba.gob.ar/iol-ui/p/expedientes"
+        try:
+            enviar_telegram(msg)
+            telegram_ok += 1
+        except Exception as e:
+            print("  Error Telegram " + c["cuij"] + ": " + str(e))
+    gmail_ok = False
+    try:
+        enviar_mail(causas_nuevas)
+        gmail_ok = True
+    except Exception as e:
+        print("  Error Gmail: " + str(e))
+    print("Resultado: telegram=" + str(telegram_ok) + "/" + str(len(causas_nuevas)) + ", gmail=" + ("ok" if gmail_ok else "FALLO"))
+    if telegram_ok > 0 or gmail_ok:
+        for c in causas_nuevas:
+            ids_conocidos.add(c["cuij"])
+    else:
+        print("FALLARON ambos canales. " + str(len(causas_nuevas)) + " causas NO se marcan como conocidas; se reintentaran.")
     return ids_conocidos
 
 
