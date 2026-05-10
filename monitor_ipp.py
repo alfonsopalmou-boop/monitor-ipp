@@ -1,17 +1,11 @@
 import requests
-import smtplib
 import json
 import os
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone, timedelta
 
-GMAIL_USUARIO = os.environ["GMAIL_USUARIO"]
-GMAIL_PASSWORD = os.environ["GMAIL_PASSWORD"]
-DESTINATARIO = os.environ.get("DESTINATARIO", GMAIL_USUARIO)
-INICIO_MONITOREO = datetime(2026, 4, 14)
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
+INICIO_MONITOREO = datetime(2026, 4, 14)
 API_URL = "https://eje.juscaba.gob.ar/iol-api/api/public/expedientes/lista"
 ENCAB_URL = "https://eje.juscaba.gob.ar/iol-api/api/public/expedientes/encabezado"
 HEADERS = {"Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded"}
@@ -57,24 +51,6 @@ def enviar_telegram(mensaje):
     r.raise_for_status()
 
 
-def enviar_mail(causas_nuevas):
-    ahora = datetime.now(AR_TZ)
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = "Nueva causa Habeas Corpus - " + ahora.strftime("%d/%m/%Y %H:%M")
-    msg["From"] = GMAIL_USUARIO
-    msg["To"] = DESTINATARIO
-    cuerpo = "Causas nuevas detectadas en el EJE:\n\n"
-    for c in causas_nuevas:
-        cuerpo += " - " + c["identificador"] + "\n"
-        cuerpo += "   Caratula: " + c["caratula"] + "\n"
-        cuerpo += "   Fecha inicio: " + c["fecha"] + "\n"
-        cuerpo += "   Ver: https://eje.juscaba.gob.ar/iol-ui/p/expedientes\n\n"
-    msg.attach(MIMEText(cuerpo, "plain"))
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(GMAIL_USUARIO, GMAIL_PASSWORD)
-        server.sendmail(GMAIL_USUARIO, DESTINATARIO, msg.as_string())
-
-
 def chequear(ids_conocidos):
     ahora = datetime.now(AR_TZ)
     print("[" + ahora.strftime("%d/%m/%Y %H:%M:%S") + " AR] Chequeando...")
@@ -114,20 +90,10 @@ def chequear(ids_conocidos):
         try:
             enviar_telegram(msg)
             telegram_ok += 1
+            ids_conocidos.add(c["cuij"])
         except Exception as e:
             print("  Error Telegram " + c["cuij"] + ": " + str(e))
-    gmail_ok = False
-    try:
-        enviar_mail(causas_nuevas)
-        gmail_ok = True
-    except Exception as e:
-        print("  Error Gmail: " + str(e))
-    print("Resultado: telegram=" + str(telegram_ok) + "/" + str(len(causas_nuevas)) + ", gmail=" + ("ok" if gmail_ok else "FALLO"))
-    if telegram_ok > 0 or gmail_ok:
-        for c in causas_nuevas:
-            ids_conocidos.add(c["cuij"])
-    else:
-        print("FALLARON ambos canales. " + str(len(causas_nuevas)) + " causas NO se marcan como conocidas; se reintentaran.")
+    print("Resultado: telegram=" + str(telegram_ok) + "/" + str(len(causas_nuevas)))
     return ids_conocidos
 
 
