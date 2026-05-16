@@ -1,0 +1,20 @@
+# Cloudflare Workers config para monitor-ipp.
+# Despues de crear el KV namespace con `wrangler kv namespace create monitor-ipp-state`,
+# reemplazar REPLACE_WITH_NAMESPACE_ID por el id que devuelve el comando.
+
+name = "monitor-ipp"
+main = "worker.js"
+compatibility_date = "2024-10-01"
+
+# Cron real cada 5 minutos (Cloudflare lo respeta, sin throttling).
+[triggers]
+crons = ["*/5 * * * *"]
+
+# KV namespace para guardar los cuijs ya alertados.
+[[kv_namespaces]]
+binding = "MONITOR_KV"
+id = "REPLACE_WITH_NAMESPACE_ID"
+
+# Observabilidad (logs visibles en el dashboard).
+[observability]
+enabled = true
