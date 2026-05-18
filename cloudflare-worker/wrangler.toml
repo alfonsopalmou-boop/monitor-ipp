@@ -13,7 +13,7 @@ crons = ["*/5 * * * *"]
 # KV namespace para guardar los cuijs ya alertados.
 [[kv_namespaces]]
 binding = "MONITOR_KV"
-id = "REPLACE_WITH_NAMESPACE_ID"
+id = "c12d6a0ef7c34ced9ad3bb49cb7231f6"
 
 # Observabilidad (logs visibles en el dashboard).
 [observability]
