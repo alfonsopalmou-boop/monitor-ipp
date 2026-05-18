@@ -1,6 +1,6 @@
 # Cloudflare Workers config para monitor-ipp.
 # Despues de crear el KV namespace con `wrangler kv namespace create monitor-ipp-state`,
-# reemplazar REPLACE_WITH_NAMESPACE_ID por el id que devuelve el comando.
+# reemplazar c12d6a0ef7c34ced9ad3bb49cb7231f6 por el id que devuelve el comando.
 
 name = "monitor-ipp"
 main = "worker.js"
@@ -14,7 +14,6 @@ crons = ["*/5 * * * *"]
 [[kv_namespaces]]
 binding = "MONITOR_KV"
 id = "c12d6a0ef7c34ced9ad3bb49cb7231f6"
-
 # Observabilidad (logs visibles en el dashboard).
 [observability]
 enabled = true
