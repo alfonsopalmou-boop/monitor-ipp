@@ -12,6 +12,8 @@
 const INICIO_MONITOREO_MS = new Date('2026-04-14T00:00:00-03:00').getTime();
 const API_URL = 'https://eje.juscaba.gob.ar/iol-api/api/public/expedientes/lista';
 const ENCAB_URL = 'https://eje.juscaba.gob.ar/iol-api/api/public/expedientes/encabezado';
+const PAGE_SIZE = 50;
+const MAX_PAGES = 10;
 
 export default {
   async scheduled(event, env, ctx) {
@@ -24,9 +26,9 @@ export default {
   }
 };
 
-async function obtenerLista() {
+async function obtenerLista(page = 0, size = PAGE_SIZE) {
   const filter = JSON.stringify({ identificador: 'habeas corpus', causas: '0' });
-  const info = JSON.stringify({ filter, tipoBusqueda: 'CAU', page: 0, size: 10 });
+  const info = JSON.stringify({ filter, tipoBusqueda: 'CAU', page, size });
   const r = await fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -37,6 +39,23 @@ async function obtenerLista() {
   });
   if (!r.ok) throw new Error(`obtenerLista HTTP ${r.status}`);
   return await r.json();
+}
+
+async function obtenerTodasLasCausas() {
+  const todas = [];
+  let total = null;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const data = await obtenerLista(page, PAGE_SIZE);
+    const items = data.content || [];
+    if (total === null) {
+      total = data.totalElements || 0;
+      console.log(`Total de causas en EJE: ${total}`);
+    }
+    todas.push(...items);
+    if (todas.length >= total || items.length < PAGE_SIZE) break;
+  }
+  console.log(`Causas obtenidas: ${todas.length}`);
+  return { items: todas, total };
 }
 
 async function obtenerEncabezado(expId) {
@@ -78,14 +97,13 @@ function fechaAR(ms) {
 
 async function chequear(env) {
   const idsConocidos = await cargarConocidos(env);
-  let lista;
+  let items, total;
   try {
-    lista = await obtenerLista();
+    ({ items, total } = await obtenerTodasLasCausas());
   } catch (e) {
     console.log('Error lista:', e.message);
     return;
   }
-  const items = lista.content || [];
   const encabezados = await Promise.all(
     items.map(i => obtenerEncabezado(i.expId).catch(() => null))
   );
@@ -109,7 +127,7 @@ async function chequear(env) {
     }
   }
   if (causasNuevas.length === 0) {
-    console.log(`Sin causas nuevas. Total en EJE: ${lista.totalElements}`);
+    console.log(`Sin causas nuevas. Total en EJE: ${total}`);
     await guardarConocidos(env, idsConocidos);
     return;
   }

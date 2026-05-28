@@ -1,6 +1,7 @@
 import requests
 import json
 import os
+import sys
 from datetime import datetime, timezone, timedelta
 
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
@@ -9,6 +10,9 @@ INICIO_MONITOREO = datetime(2026, 4, 14)
 API_URL = "https://eje.juscaba.gob.ar/iol-api/api/public/expedientes/lista"
 ENCAB_URL = "https://eje.juscaba.gob.ar/iol-api/api/public/expedientes/encabezado"
 HEADERS = {"Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded"}
+
+PAGE_SIZE = 50
+MAX_PAGES = 10
 
 AR_TZ = timezone(timedelta(hours=-3))
 KNOWN_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "known_ids.json")
@@ -26,16 +30,33 @@ def guardar_conocidos(ids):
         json.dump(sorted(ids), f)
 
 
-def obtener_lista():
+def obtener_lista(page=0, size=PAGE_SIZE):
     body = {"info": json.dumps({
         "filter": json.dumps({"identificador": "habeas corpus", "causas": "0"}),
         "tipoBusqueda": "CAU",
-        "page": 0,
-        "size": 10
+        "page": page,
+        "size": size
     })}
     r = requests.post(API_URL, data=body, headers=HEADERS, timeout=15)
     r.raise_for_status()
     return r.json()
+
+
+def obtener_todas_las_causas():
+    """Pagina sobre la API hasta obtener todas las causas."""
+    todas = []
+    total = None
+    for page in range(MAX_PAGES):
+        data = obtener_lista(page=page, size=PAGE_SIZE)
+        items = data.get("content", [])
+        if total is None:
+            total = data.get("totalElements", 0)
+            print("Total de causas en EJE: " + str(total))
+        todas.extend(items)
+        if len(todas) >= total or len(items) < PAGE_SIZE:
+            break
+    print("Causas obtenidas: " + str(len(todas)))
+    return todas, total
 
 
 def obtener_encabezado(exp_id):
@@ -54,8 +75,8 @@ def enviar_telegram(mensaje):
 def chequear(ids_conocidos):
     ahora = datetime.now(AR_TZ)
     print("[" + ahora.strftime("%d/%m/%Y %H:%M:%S") + " AR] Chequeando...")
-    lista = obtener_lista()
-    exp_ids = [e["expId"] for e in lista["content"]]
+    items, total = obtener_todas_las_causas()
+    exp_ids = [e["expId"] for e in items]
     causas_nuevas = []
     for exp_id in exp_ids:
         enc = obtener_encabezado(exp_id)
@@ -82,7 +103,7 @@ def chequear(ids_conocidos):
         else:
             ids_conocidos.add(cuij)
     if not causas_nuevas:
-        print("Sin causas nuevas. Total en EJE: " + str(lista["totalElements"]))
+        print("Sin causas nuevas. Total en EJE: " + str(total))
         return ids_conocidos
     telegram_ok = 0
     for c in causas_nuevas:
@@ -102,6 +123,8 @@ ids_conocidos = cargar_conocidos()
 try:
     ids_conocidos = chequear(ids_conocidos)
 except Exception as e:
-    print("Error: " + str(e))
+    print("Error fatal: " + str(e))
+    guardar_conocidos(ids_conocidos)
+    sys.exit(1)
 guardar_conocidos(ids_conocidos)
 print("IDs conocidos guardados: " + str(len(ids_conocidos)))
