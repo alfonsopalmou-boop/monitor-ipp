@@ -21,13 +21,16 @@ KNOWN_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "known_ids
 def cargar_conocidos():
     if os.path.exists(KNOWN_FILE):
         with open(KNOWN_FILE, "r") as f:
-            return set(json.load(f))
+            try:
+                return set(json.load(f))
+            except Exception:
+                return set()
     return set()
 
 
 def guardar_conocidos(ids):
     with open(KNOWN_FILE, "w") as f:
-        json.dump(sorted(ids), f)
+        json.dump(sorted(list(ids)), f)
 
 
 def obtener_lista(page=0, size=PAGE_SIZE):
@@ -40,23 +43,6 @@ def obtener_lista(page=0, size=PAGE_SIZE):
     r = requests.post(API_URL, data=body, headers=HEADERS, timeout=15)
     r.raise_for_status()
     return r.json()
-
-
-def obtener_todas_las_causas():
-    """Pagina sobre la API hasta obtener todas las causas."""
-    todas = []
-    total = None
-    for page in range(MAX_PAGES):
-        data = obtener_lista(page=page, size=PAGE_SIZE)
-        items = data.get("content", [])
-        if total is None:
-            total = data.get("totalElements", 0)
-            print("Total de causas en EJE: " + str(total))
-        todas.extend(items)
-        if len(todas) >= total or len(items) < PAGE_SIZE:
-            break
-    print("Causas obtenidas: " + str(len(todas)))
-    return todas, total
 
 
 def obtener_encabezado(exp_id):
@@ -75,45 +61,96 @@ def enviar_telegram(mensaje):
 def chequear(ids_conocidos):
     ahora = datetime.now(AR_TZ)
     print("[" + ahora.strftime("%d/%m/%Y %H:%M:%S") + " AR] Chequeando...")
-    items, total = obtener_todas_las_causas()
-    exp_ids = [e["expId"] for e in items]
+    
     causas_nuevas = []
-    for exp_id in exp_ids:
-        enc = obtener_encabezado(exp_id)
-        if not enc:
-            continue
-        tipo = enc.get("tipoExpediente", "?")
-        cuij = enc.get("cuij", str(exp_id))
-        print("  " + tipo + " " + cuij)
-        if cuij in ids_conocidos:
-            continue
-        fecha_ts = enc.get("fechaInicio", 0)
-        if fecha_ts:
-            fecha_dt = datetime.fromtimestamp(fecha_ts / 1000, tz=AR_TZ)
-        else:
-            fecha_dt = None
-        if fecha_dt and fecha_dt >= INICIO_MONITOREO.replace(tzinfo=AR_TZ):
-            causas_nuevas.append({
-                "cuij": cuij,
-                "identificador": tipo + " " + cuij,
-                "caratula": enc.get("caratula", ""),
-                "fecha": fecha_dt.strftime("%d/%m/%Y")
-            })
-            print("  NUEVA: " + tipo + " " + cuij + " - " + enc.get("caratula", ""))
-        else:
-            ids_conocidos.add(cuij)
+    stop_checking = False
+    total_elements = 0
+    
+    for page in range(MAX_PAGES):
+        if stop_checking:
+            break
+            
+        print(f"Obteniendo causas de la página {page}...")
+        data = obtener_lista(page=page, size=PAGE_SIZE)
+        items = data.get("content", [])
+        
+        if page == 0:
+            total_elements = data.get("totalElements", 0)
+            print("Total de causas en EJE: " + str(total_elements))
+            
+        if not items:
+            print("No se encontraron más causas.")
+            break
+            
+        for item in items:
+            exp_id = item.get("expId")
+            exp_id_str = str(exp_id)
+            
+            # 1. Si el expId ya es conocido, paramos la búsqueda
+            # (Dado que la lista viene ordenada descendente, todos los siguientes ya se procesaron)
+            if exp_id_str in ids_conocidos or exp_id in ids_conocidos:
+                print(f"Causa conocida encontrada ({exp_id_str}). Deteniendo búsqueda.")
+                stop_checking = True
+                break
+                
+            # 2. Consultar el encabezado
+            print(f"Consultando encabezado para expId {exp_id}...")
+            enc = obtener_encabezado(exp_id)
+            if not enc:
+                continue
+                
+            tipo = enc.get("tipoExpediente", "?")
+            cuij = enc.get("cuij", str(exp_id))
+            
+            # Verificar si el CUIJ es conocido (por transición de formato)
+            if cuij in ids_conocidos:
+                print(f"Causa conocida por CUIJ ({cuij}). Asociando expId {exp_id_str} a conocidos.")
+                ids_conocidos.add(exp_id_str)
+                continue
+                
+            fecha_ts = enc.get("fechaInicio", 0)
+            if fecha_ts:
+                fecha_dt = datetime.fromtimestamp(fecha_ts / 1000, tz=AR_TZ)
+            else:
+                fecha_dt = None
+                
+            if fecha_dt and fecha_dt >= INICIO_MONITOREO.replace(tzinfo=AR_TZ):
+                causas_nuevas.append({
+                    "expId": exp_id_str,
+                    "cuij": cuij,
+                    "identificador": tipo + " " + cuij,
+                    "caratula": enc.get("caratula", ""),
+                    "fecha": fecha_dt.strftime("%d/%m/%Y")
+                })
+                print("  NUEVA DETECTADA: " + tipo + " " + cuij + " - " + enc.get("caratula", "") + f" (expId: {exp_id_str})")
+            else:
+                # Causa anterior a inicio del monitoreo: detenemos búsqueda
+                print(f"Causa {cuij} anterior a inicio de monitoreo. Deteniendo búsqueda.")
+                ids_conocidos.add(exp_id_str)
+                if cuij:
+                    ids_conocidos.add(cuij)
+                stop_checking = True
+                break
+                
+        if len(items) < PAGE_SIZE:
+            break
+            
     if not causas_nuevas:
-        print("Sin causas nuevas. Total en EJE: " + str(total))
+        print("Sin causas nuevas. Total en EJE: " + str(total_elements))
         return ids_conocidos
+        
     telegram_ok = 0
     for c in causas_nuevas:
         msg = "NUEVA CAUSA HABEAS CORPUS\n" + c["identificador"] + "\n" + c["caratula"] + "\nFecha inicio: " + c["fecha"] + "\nhttps://eje.juscaba.gob.ar/iol-ui/p/expedientes"
         try:
             enviar_telegram(msg)
             telegram_ok += 1
-            ids_conocidos.add(c["cuij"])
+            ids_conocidos.add(c["expId"])
+            if c["cuij"]:
+                ids_conocidos.add(c["cuij"])
         except Exception as e:
             print("  Error Telegram " + c["cuij"] + ": " + str(e))
+            
     print("Resultado: telegram=" + str(telegram_ok) + "/" + str(len(causas_nuevas)))
     return ids_conocidos
 
