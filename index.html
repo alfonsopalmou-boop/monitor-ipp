@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#001A3A">
+  <title>SIPJU · Terminal Móvil Oficial</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- CONTENEDOR MÓVIL (MOCKUP DISPOSITIVO) -->
+  <div class="phone-container">
+    
+    <!-- Isla dinámica del teléfono -->
+    <div class="phone-island">
+      <div class="camera-dot"></div>
+      <div style="width: 6px; height: 6px; background: #111827; border-radius: 50%;"></div>
+    </div>
+    
+    <!-- Pantalla del celular -->
+    <div class="screen">
+      
+      <!-- Barra de estado del sistema (batería, hora, señal) -->
+      <div class="status-bar">
+        <span class="status-time" id="status-clock">13:54</span>
+        <div class="status-right">
+          <span>📶</span>
+          <span>4G</span>
+          <span>🔋 94%</span>
+        </div>
+      </div>
+      
+      <!-- Cabecera de la aplicación -->
+      <div class="app-header">
+        <div class="header-top">
+          <div class="logo-wrap">
+            <div class="logo-badge">PC</div>
+            <div>
+              <div class="app-title">SIPJU Móvil</div>
+              <div class="officer-badge-mini">Comisaría Vecinal 14-A · Of. Aguirre</div>
+            </div>
+          </div>
+          <div class="header-actions">
+            <button class="action-btn" onclick="switchTab('ia')">
+              🤖
+              <span class="badge-dot"></span>
+            </button>
+            <button class="action-btn" onclick="triggerMockEmergency()">🚨</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Área de contenido dinámico -->
+      <div class="app-content" id="app-content">
+        <!-- Renderizado dinámico desde app.js -->
+      </div>
+      
+      <!-- Barra de navegación inferior -->
+      <div class="nav-bar">
+        <button class="nav-tab active" data-tab="home">
+          <span class="tab-icon">🏠</span>
+          <span class="tab-label">Inicio</span>
+        </button>
+        <button class="nav-tab" data-tab="ia">
+          <span class="tab-icon">🤖</span>
+          <span class="tab-label">IA Asist.</span>
+        </button>
+        <button class="nav-tab" data-tab="tareas">
+          <span class="tab-icon">📋</span>
+          <span class="tab-label">Tareas</span>
+        </button>
+        <button class="nav-tab" data-tab="fe_vida">
+          <span class="tab-icon">👴</span>
+          <span class="tab-label">Fe Vida</span>
+        </button>
+        <button class="nav-tab" data-tab="mapa">
+          <span class="tab-icon">🗺️</span>
+          <span class="tab-label">Mapa</span>
+        </button>
+      </div>
+      
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    // Actualizar reloj de barra de estado
+    function updateClock() {
+      const d = new Date();
+      const h = String(d.getHours()).padStart(2, '0');
+      const m = String(d.getMinutes()).padStart(2, '0');
+      const clockEl = document.getElementById("status-clock");
+      if (clockEl) clockEl.textContent = `${h}:${m}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+  </script>
+</body>
+</html>
