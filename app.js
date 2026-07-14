@@ -57,31 +57,32 @@ const INITIAL_OFICIOS = [
     id: "OF-2026-9081",
     origen: "Juzgado Penal Contravencional y de Faltas Nº 12",
     juez: "Dra. Acosta, M.",
-    causa: "Nº 4782/25 s/ CP 89 (Lesiones)",
-    tipo: "Constatación de Domicilio",
+    causa: "Nº 4782/25 s/ Morigeración de Pena",
+    tipo: "Constatación de Domicilio (Urgente - Excarcelación)",
     sujeto: "ROCHA, Sergio Damián (DNI 32.114.897)",
     direccion: "Malabia 2340, CABA",
     distancia: "350 metros",
-    prioridad: "ALTA",
-    plazo: "48 horas",
+    prioridad: "CRÍTICA",
+    plazo: "4 horas (Libertad)",
     comisaria: "Comisaría Vecinal 14-A",
     estado: "Pendiente"
   },
   {
     id: "OF-2026-8812",
-    origen: "Fiscalía Contravencional CABA Nº 6",
-    juez: "Dr. Méndez, Carlos",
-    causa: "Nº 1029/26 s/ Ley 1.472 Art. 79 (Trapito)",
-    tipo: "Constatación de Residencia",
+    origen: "Registro Civil / Trámite Ciudadano",
+    juez: "Trámite Administrativo Nº 1029/26",
+    causa: "Solicitud de Certificado de Domicilio",
+    tipo: "Certificado de Domicilio (Trámite Administrativo)",
     sujeto: "MARTINEZ, Lucas Sebastián (DNI 35.842.901)",
     direccion: "Gascón 1254, CABA",
     distancia: "1.2 km",
-    prioridad: "MEDIA",
+    prioridad: "BAJA",
     plazo: "5 días",
     comisaria: "Comisaría Vecinal 14-A",
     estado: "Pendiente"
   }
 ];
+
 
 // ==========================================
 // ESTADO GLOBAL DE LA SIMULACIÓN
@@ -367,18 +368,18 @@ function renderPhoneTareas(container) {
       </div>
     `).join('')}
 
-    <div style="margin: 14px 0 6px;"><h3 style="font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Probations (1)</h3></div>
+    <div style="margin: 14px 0 6px;"><h3 style="font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Controles Activos (1)</h3></div>
     
     <div class="card clickable" onclick="startProbationControl()">
       <div class="task-item">
         <div class="task-icon-circle" style="background:var(--purple-bg); color:var(--purple);">👤</div>
         <div class="task-details">
-          <div class="task-title" style="font-size:13px;">Control Domiciliario Probation</div>
+          <div class="task-title" style="font-size:13px;">Control Domiciliario (Prisión Domiciliaria)</div>
           <div class="task-desc" style="font-size:11.5px;">ROCHA, Sergio Damián (Causa 4782/25)</div>
         </div>
         <div class="task-meta">
           <div class="task-dist" style="font-size:11px;">350m</div>
-          <span class="chip chip-purple" style="font-size:7.5px;">Semanal</span>
+          <span class="chip chip-purple" style="font-size:7.5px;">Permanente</span>
         </div>
       </div>
     </div>
@@ -401,25 +402,26 @@ function renderPhoneTareas(container) {
 function renderPhoneFeVida(container) {
   container.innerHTML = `
     <div class="flow-header">
-      <div class="flow-title">Fe de Vida Asistida</div>
-      <div class="flow-sub">Trámites para tercera edad en territorio</div>
+      <div class="flow-title">Certificados de Supervivencia</div>
+      <div class="flow-sub">Trámites para adultos mayores solicitados por ANSES</div>
     </div>
     <div class="card clickable" onclick="startFeVidaTask()">
       <div class="task-item">
         <div class="task-icon-circle" style="background:var(--amber-bg); color:var(--amber);">👴</div>
         <div class="task-details">
-          <div class="task-title" style="font-size:13px;">Fe de Vida / Supervivencia</div>
+          <div class="task-title" style="font-size:13px;">Certificado de Supervivencia (ANSES / Fe de Vida)</div>
           <div class="task-desc" style="font-size:11.5px;">BERMÚDEZ, Juan Manuel (DNI 10.443.219)</div>
           <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">Guatemala 4210, 2º 'A' · Palermo Soho</div>
         </div>
         <div class="task-meta">
           <div class="task-dist" style="font-size:11px;">600m</div>
-          <span class="chip chip-amber" style="font-size:7.5px;">Solicitado</span>
+          <span class="chip chip-amber" style="font-size:7.5px;">Pendiente</span>
         </div>
       </div>
     </div>
   `;
 }
+
 
 function renderPhoneMapa(container) {
   container.innerHTML = `
@@ -601,13 +603,13 @@ function triggerSimulateOcr() {
       id: "OF-2026-1157",
       origen: "Juzgado Penal Contravencional y de Faltas Nº 2",
       juez: "Dr. Ferreira",
-      causa: "Nº 115790/2026 s/ Habeas Corpus",
-      tipo: "Constatación Habeas Corpus",
+      causa: "Nº 115790/2026 s/ Excarcelación",
+      tipo: "Constatación de Domicilio (Urgente - Excarcelación)",
       sujeto: "ABDURRAMAN, Yamila (DNI 27.580.092)",
       direccion: "Costa Rica 4820, CABA",
       distancia: "180 metros",
-      prioridad: "ALTA",
-      plazo: "24 horas",
+      prioridad: "CRÍTICA",
+      plazo: "4 horas (Libertad)",
       comisaria: "Comisaría Vecinal 14-A",
       estado: "Pendiente"
     };
@@ -627,8 +629,8 @@ function dispatchOficio() {
   setTimeout(() => {
     const pushEl = document.getElementById("push-notif");
     if (pushEl) {
-      document.getElementById("push-title").textContent = "Nuevo Oficio Asignado ⚖";
-      document.getElementById("push-text").textContent = "Constatación Habeas Corpus - Abdurraman, Y. en Costa Rica 4820 (a 180m).";
+      document.getElementById("push-title").textContent = "Nuevo Oficio Asignado ⚖ (URGENTE)";
+      document.getElementById("push-text").textContent = "Constatación Excarcelación - Abdurraman, Y. en Costa Rica 4820 (a 180m).";
       pushEl.classList.add("show");
       
       playBeep();
@@ -639,6 +641,7 @@ function dispatchOficio() {
     }
   }, 1000);
 }
+
 
 function playBeep() {
   try {
