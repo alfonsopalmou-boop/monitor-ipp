@@ -4,88 +4,134 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#001A3A">
-  <title>SIPJU · Terminal Móvil Oficial</title>
+  <title>SIPJU · Prototipo Operativo CABA</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <!-- CONTENEDOR MÓVIL (MOCKUP DISPOSITIVO) -->
-  <div class="phone-container">
-    
-    <!-- Isla dinámica del teléfono -->
-    <div class="phone-island">
-      <div class="camera-dot"></div>
-      <div style="width: 6px; height: 6px; background: #111827; border-radius: 50%;"></div>
+  <!-- CABECERA GENERAL DEL PROTOTIPO -->
+  <header class="main-header">
+    <div class="main-title">
+      <h1>SIPJU · Prototipo Operativo (IUSE 3.0)</h1>
+      <p>Vista Dual Sincronizada: Terminal Móvil del Oficial (Izquierda) + Consola de Comisaría Vecinal 14-A (Derecha)</p>
     </div>
+    <div class="main-controls">
+      <button class="btn-large secondary" style="height:36px; padding:0 12px; font-size:12.5px;" id="reset-btn">🔄 Reiniciar Demo</button>
+    </div>
+  </header>
+
+  <!-- DISEÑO EN PARALELO (SPLIT VIEW) -->
+  <main class="split-layout">
     
-    <!-- Pantalla del celular -->
-    <div class="screen">
-      
-      <!-- Barra de estado del sistema (batería, hora, señal) -->
-      <div class="status-bar">
-        <span class="status-time" id="status-clock">13:54</span>
-        <div class="status-right">
-          <span>📶</span>
-          <span>4G</span>
-          <span>🔋 94%</span>
+    <!-- COLUMNA IZQUIERDA: TERMINAL MÓVIL DEL POLICÍA -->
+    <section class="phone-column">
+      <div class="phone-container">
+        
+        <!-- Isla dinámica física -->
+        <div class="phone-island">
+          <div class="camera-dot"></div>
+          <div style="width: 6px; height: 6px; background: #111827; border-radius: 50%;"></div>
         </div>
-      </div>
-      
-      <!-- Cabecera de la aplicación -->
-      <div class="app-header">
-        <div class="header-top">
-          <div class="logo-wrap">
-            <div class="logo-badge">PC</div>
-            <div>
-              <div class="app-title">SIPJU Móvil</div>
-              <div class="officer-badge-mini">Comisaría Vecinal 14-A · Of. Aguirre</div>
+        
+        <!-- Pantalla del celular -->
+        <div class="screen">
+          
+          <!-- Banner de Notificación Push Flotante -->
+          <div class="push-notification" id="push-notif" onclick="dismissPushNotification()">
+            <div class="push-icon">⚖</div>
+            <div class="push-body">
+              <div class="push-title" id="push-title">Nuevo Oficio Asignado</div>
+              <div class="push-text" id="push-text">Se asignó un nuevo oficio por proximidad GPS.</div>
             </div>
           </div>
-          <div class="header-actions">
-            <button class="action-btn" onclick="switchTab('ia')">
-              🤖
-              <span class="badge-dot"></span>
-            </button>
-            <button class="action-btn" onclick="triggerMockEmergency()">🚨</button>
+          
+          <!-- Barra de estado superior del celular -->
+          <div class="status-bar">
+            <span class="status-time" id="status-clock">12:00</span>
+            <div class="status-right">
+              <span>📶</span>
+              <span>5G</span>
+              <span>🔋 98%</span>
+            </div>
           </div>
+          
+          <!-- Cabecera de la App Policial -->
+          <div class="app-header">
+            <div class="header-top">
+              <div class="logo-wrap">
+                <div class="logo-badge">PC</div>
+                <div>
+                  <div class="app-title">SIPJU Oficial</div>
+                  <div class="officer-badge-mini">Móvil 4231 · Oficial Aguirre</div>
+                </div>
+              </div>
+              <div class="header-actions">
+                <button class="action-btn" onclick="switchTab('ia')">
+                  🤖
+                  <span class="badge-dot"></span>
+                </button>
+                <button class="action-btn" onclick="triggerMockEmergency()" style="background:var(--red);">🚨</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Área de inyección de pantallas del celular (Controlada por app.js) -->
+          <div class="app-content" id="app-content">
+            <!-- Cargado por JS -->
+          </div>
+          
+          <!-- Pestañas inferiores del celular -->
+          <div class="nav-bar">
+            <button class="nav-tab active" data-tab="home">
+              <span class="tab-icon">🏠</span>
+              <span class="tab-label">Inicio</span>
+            </button>
+            <button class="nav-tab" data-tab="ia">
+              <span class="tab-icon">🤖</span>
+              <span class="tab-label">IA Asist.</span>
+            </button>
+            <button class="nav-tab" data-tab="tareas">
+              <span class="tab-icon">📋</span>
+              <span class="tab-label">Tareas</span>
+            </button>
+            <button class="nav-tab" data-tab="fe_vida">
+              <span class="tab-icon">👴</span>
+              <span class="tab-label">Fe Vida</span>
+            </button>
+            <button class="nav-tab" data-tab="mapa">
+              <span class="tab-icon">🗺️</span>
+              <span class="tab-label">Mapa</span>
+            </button>
+          </div>
+          
         </div>
       </div>
-      
-      <!-- Área de contenido dinámico -->
-      <div class="app-content" id="app-content">
-        <!-- Renderizado dinámico desde app.js -->
+    </section>
+
+    <!-- COLUMNA DERECHA: CONSOLA WEB DE LA COMISARÍA -->
+    <section class="console-column">
+      <div class="console-header">
+        <div class="console-title-wrap">
+          <div class="logo-badge" style="background:#fff; color:var(--pc-navy-deep);">CV</div>
+          <div>
+            <div class="console-title">SIPJU · Comisaría Vecinal 14-A</div>
+            <div class="console-subtitle">Módulo de Despacho y Recepción de Oficios Judiciales</div>
+          </div>
+        </div>
+        <div class="console-badge">CABA · SEGURIDAD</div>
       </div>
       
-      <!-- Barra de navegación inferior -->
-      <div class="nav-bar">
-        <button class="nav-tab active" data-tab="home">
-          <span class="tab-icon">🏠</span>
-          <span class="tab-label">Inicio</span>
-        </button>
-        <button class="nav-tab" data-tab="ia">
-          <span class="tab-icon">🤖</span>
-          <span class="tab-label">IA Asist.</span>
-        </button>
-        <button class="nav-tab" data-tab="tareas">
-          <span class="tab-icon">📋</span>
-          <span class="tab-label">Tareas</span>
-        </button>
-        <button class="nav-tab" data-tab="fe_vida">
-          <span class="tab-icon">👴</span>
-          <span class="tab-label">Fe Vida</span>
-        </button>
-        <button class="nav-tab" data-tab="mapa">
-          <span class="tab-icon">🗺️</span>
-          <span class="tab-label">Mapa</span>
-        </button>
+      <!-- Cuerpo de la Consola (Cargado dinámicamente por app.js) -->
+      <div class="console-body" id="console-body">
+        <!-- Cargado por JS -->
       </div>
-      
-    </div>
-  </div>
+    </section>
+
+  </main>
 
   <script src="app.js"></script>
   <script>
-    // Actualizar reloj de barra de estado
+    // Reloj dinámico de la barra de estado del celular
     function updateClock() {
       const d = new Date();
       const h = String(d.getHours()).padStart(2, '0');

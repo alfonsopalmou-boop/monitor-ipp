@@ -1,4 +1,4 @@
-// PROTOTIPO SIPJU - LÓGICA DE APLICACIÓN
+// PROTOTIPO SIPJU - LÓGICA DE APLICACIÓN (VISTA DUAL)
 
 // ==========================================
 // BASE DE DATOS SIMULADA (MOCK DATA)
@@ -10,7 +10,6 @@ const MOCK_PEOPLE = {
     dni: "35.842.901",
     edad: "29 años",
     direccion: "Gascón 1254, 4º 'A', CABA",
-    foto: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=60",
     renaper: "VÁLIDO (Cotejo biográfico OK)",
     rnr: "2 Procesos Penales Abiertos",
     alertas: ["Restricción Perimetral Activa (Causa 142/25)"]
@@ -20,7 +19,6 @@ const MOCK_PEOPLE = {
     dni: "32.114.897",
     edad: "34 años",
     direccion: "Malabia 2340, 3º 'B', Palermo",
-    foto: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=60",
     renaper: "VÁLIDO (Cotejo biográfico OK)",
     rnr: "1 Proceso Penal Abierto (CP 89 - Lesiones)",
     alertas: ["Sujeto bajo Reglas de Conducta (Probation)", "Exclusión de Hogar Vigente"]
@@ -30,32 +28,39 @@ const MOCK_PEOPLE = {
     dni: "10.443.219",
     edad: "78 años",
     direccion: "Guatemala 4210, 2º 'A', Palermo",
-    foto: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=60",
     renaper: "VÁLIDO (Cotejo biográfico OK)",
     rnr: "Sin Antecedentes",
     alertas: ["Movilidad Reducida Declarada"]
+  },
+  "27580092": {
+    nombre: "ABDURRAMAN, Yamila",
+    dni: "27.580.092",
+    edad: "41 años",
+    direccion: "Costa Rica 4820, Palermo Soho",
+    renaper: "VÁLIDO (Cotejo biográfico OK)",
+    rnr: "Sin Antecedentes",
+    alertas: ["Habeas Corpus Solicitado en Trámite"]
   },
   "24883104": {
     nombre: "RÍOS, Elena Victoria",
     dni: "24.883.104",
     edad: "45 años",
     direccion: "Uriarte 1428, Palermo Soho",
-    foto: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=60",
     renaper: "VÁLIDO (Cotejo biográfico OK)",
     rnr: "Sin Antecedentes",
     alertas: ["Víctima Protegida - Botón Antipánico Activo"]
   }
 };
 
-const MOCK_OFICIOS = [
+const INITIAL_OFICIOS = [
   {
     id: "OF-2026-9081",
-    origen: "Juzgado Penal contravencional y de faltas Nº 12",
+    origen: "Juzgado Penal Contravencional y de Faltas Nº 12",
     juez: "Dra. Acosta, M.",
-    causa: "Nº 4782/25 s/ CP 89",
+    causa: "Nº 4782/25 s/ CP 89 (Lesiones)",
     tipo: "Constatación de Domicilio",
     sujeto: "ROCHA, Sergio Damián (DNI 32.114.897)",
-    direccion: "Malabia 2340, 3º 'B', Palermo",
+    direccion: "Malabia 2340, CABA",
     distancia: "350 metros",
     prioridad: "ALTA",
     plazo: "48 horas",
@@ -64,12 +69,12 @@ const MOCK_OFICIOS = [
   },
   {
     id: "OF-2026-8812",
-    origen: "Fiscalía Contravencional Nº 6",
+    origen: "Fiscalía Contravencional CABA Nº 6",
     juez: "Dr. Méndez, Carlos",
     causa: "Nº 1029/26 s/ Ley 1.472 Art. 79 (Trapito)",
     tipo: "Constatación de Residencia",
     sujeto: "MARTINEZ, Lucas Sebastián (DNI 35.842.901)",
-    direccion: "Gascón 1254, 4º 'A', Almagro",
+    direccion: "Gascón 1254, CABA",
     distancia: "1.2 km",
     prioridad: "MEDIA",
     plazo: "5 días",
@@ -79,16 +84,16 @@ const MOCK_OFICIOS = [
 ];
 
 // ==========================================
-// ESTADO GLOBAL DE LA APLICACIÓN
+// ESTADO GLOBAL DE LA SIMULACIÓN
 // ==========================================
 
 let state = {
   tab: 'home', // home, ia, tareas, fe_vida, mapa
-  activeTask: null, // null o tarea seleccionada
-  taskStep: 0, // paso del flujo de tarea
+  activeTask: null, // null o tarea móvil activa
+  taskStep: 0,
   currentGPS: { lat: -34.5855, lng: -58.4278 }, // Plaza Armenia
   chatMessages: [
-    { sender: 'assistant', text: "👮 Hola Oficial. Soy el Asistente IA de SIPJU. ¿En qué puedo ayudarte hoy?\n\nPodés preguntarme dónde estás si no ubicás la calle, hacer consultas sobre protocolos legales de requisa, o iniciar una actuación." }
+    { sender: 'assistant', text: "👮 Hola Oficial. Soy el Asistente IA de SIPJU.\n\nPodés preguntarme sobre calles que no conozcas, artículos del Código Penal o protocolos (ej: *'testigo no quiere firmar'*)." }
   ],
   dniScannedData: null,
   isRecordingAudio: false,
@@ -96,21 +101,33 @@ let state = {
   isSignatureSigned: false,
   witnessDni: "",
   witnessName: "",
-  witnessOtpSent: false,
   witnessOtpVerified: false,
   alertActive: false,
   alertData: null,
-  comisariaOficios: [...MOCK_OFICIOS]
+  fotoFachadaCaptured: false,
+  
+  // Datos compartidos Comisaría <-> Móvil
+  comisariaOficios: [...INITIAL_OFICIOS],
+  
+  // Estado exclusivo de la Comisaría
+  ocrStatus: null, // null, 'scanning', 'ready'
+  ocrData: null,
+  assignedPatrol: null,
+  
+  // Variables del mapa de geocerca interactivo
+  agresorDist: 480,
+  agresorPinPos: { top: 55, left: 75 },
+  agresorDirection: -1 // Acercándose
 };
 
 // ==========================================
-// INICIALIZACIÓN Y ENRUTAMIENTO
+// INICIALIZACIÓN
 // ==========================================
 
 document.addEventListener("DOMContentLoaded", () => {
   setupNavigation();
   renderApp();
-  simulateAggressorMovement();
+  startMapLoop();
 });
 
 function setupNavigation() {
@@ -126,6 +143,35 @@ function setupNavigation() {
       renderApp();
     });
   });
+  
+  // Botón Reiniciar
+  const resetBtn = document.getElementById("reset-btn");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      state.comisariaOficios = [...INITIAL_OFICIOS];
+      state.tab = 'home';
+      state.activeTask = null;
+      state.taskStep = 0;
+      state.ocrStatus = null;
+      state.ocrData = null;
+      state.assignedPatrol = null;
+      state.chatMessages = [
+        { sender: 'assistant', text: "👮 Hola Oficial. Soy el Asistente IA de SIPJU.\n\nPodés preguntarme sobre calles que no conozcas, artículos del Código Penal o protocolos (ej: *'testigo no quiere firmar'*)." }
+      ];
+      state.agresorDist = 480;
+      state.agresorPinPos = { top: 55, left: 75 };
+      resetTaskState();
+      
+      const homeTab = document.querySelector(".nav-tab[data-tab='home']");
+      if (homeTab) {
+        document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
+        homeTab.classList.add("active");
+      }
+      
+      renderApp();
+      alert("Prototipo SIPJU reiniciado al estado inicial.");
+    });
+  }
 }
 
 function resetTaskState() {
@@ -135,21 +181,34 @@ function resetTaskState() {
   state.isSignatureSigned = false;
   state.witnessDni = "";
   state.witnessName = "";
-  state.witnessOtpSent = false;
   state.witnessOtpVerified = false;
+  state.fotoFachadaCaptured = false;
 }
 
 // ==========================================
-// RENDERIZADO PRINCIPAL
+// RENDERIZADO GLOBAL (CELULAR + COMISARÍA)
 // ==========================================
 
 function renderApp() {
-  const contentEl = document.getElementById("app-content");
+  // 1. Render Celular (Lado Izquierdo)
+  renderPhoneView();
   
-  if (state.alertActive && state.alertData) {
-    renderEmergencyAlert();
-    return;
+  // 2. Render Consola Comisaría (Lado Derecho)
+  renderPrecinctView();
+  
+  // 3. Control de Alerta de Emergencia BAP
+  if (state.alertActive) {
+    renderEmergencyModal();
   }
+}
+
+// ==========================================
+// RENDER: PANTALLAS DEL CELULAR
+// ==========================================
+
+function renderPhoneView() {
+  const contentEl = document.getElementById("app-content");
+  if (!contentEl) return;
   
   if (state.activeTask) {
     renderActiveTaskFlow(contentEl);
@@ -158,28 +217,24 @@ function renderApp() {
   
   switch (state.tab) {
     case 'home':
-      renderHome(contentEl);
+      renderPhoneHome(contentEl);
       break;
     case 'ia':
-      renderIA(contentEl);
+      renderPhoneIA(contentEl);
       break;
     case 'tareas':
-      renderTareas(contentEl);
+      renderPhoneTareas(contentEl);
       break;
     case 'fe_vida':
-      renderFeVida(contentEl);
+      renderPhoneFeVida(contentEl);
       break;
     case 'mapa':
-      renderMapaView(contentEl);
+      renderPhoneMapa(contentEl);
       break;
   }
 }
 
-// ==========================================
-// RENDER MÓDULO: HOME
-// ==========================================
-
-function renderHome(container) {
+function renderPhoneHome(container) {
   const pendingCount = state.comisariaOficios.filter(o => o.estado === 'Pendiente').length;
   
   container.innerHTML = `
@@ -189,7 +244,7 @@ function renderHome(container) {
         <span class="pulse-dot"></span>
         <span>EN SERVICIO</span>
       </div>
-      <div>Turno: 14:00 - 22:00</div>
+      <div>Placa: 41.782 · Zona 14A</div>
     </div>
     
     <!-- KPI Strip -->
@@ -200,12 +255,12 @@ function renderHome(container) {
           <div style="font-size: 10px; color: var(--text-muted); font-weight: 700;">Constataciones</div>
         </div>
         <div style="border-right: 1px solid var(--border-light);">
-          <div style="font-size: 18px; font-weight: 800; color: var(--pc-navy);">2</div>
-          <div style="font-size: 10px; color: var(--text-muted); font-weight: 700;">Controles Habilit.</div>
+          <div style="font-size: 18px; font-weight: 800; color: var(--pc-navy);">1</div>
+          <div style="font-size: 10px; color: var(--text-muted); font-weight: 700;">Controles Prob.</div>
         </div>
         <div>
           <div style="font-size: 18px; font-weight: 800; color: var(--pc-navy);">1</div>
-          <div style="font-size: 10px; color: var(--text-muted); font-weight: 700;">Fe de Vida Asist.</div>
+          <div style="font-size: 10px; color: var(--text-muted); font-weight: 700;">Fe de Vida</div>
         </div>
       </div>
     </div>
@@ -214,24 +269,24 @@ function renderHome(container) {
     <div class="card clickable" style="border-left: 4px solid var(--amber); background: var(--amber-bg);" onclick="switchTab('mapa')">
       <div class="card-title-row">
         <span class="chip chip-amber" style="background:#fff;">Alerta Geocerca</span>
-        <span style="font-size: 11px; color: var(--text-muted);">Hace 2 min</span>
+        <span style="font-size: 11px; color: var(--text-muted);">En vivo</span>
       </div>
-      <div class="card-title" style="font-size:14px;">Restricción Causa 78/26 (Rocha, S.)</div>
-      <div class="card-subtitle">Exclusión perimetral 500m activa en Uriarte 1428. Dispositivo reporta agresor a 1.1 km.</div>
+      <div class="card-title" style="font-size:13.5px;">Geocerca Causa 78/26 (Rocha, S.)</div>
+      <div class="card-subtitle">Exclusión perimetral 500m activa en Uriarte 1428. Agresor a ${state.agresorDist}m de la víctima.</div>
     </div>
     
     <!-- Quick Access Grid -->
-    <div style="margin: 18px 0 8px;"><h3 style="font-size:13px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Accesos Rápidos</h3></div>
+    <div style="margin: 10px 0 8px;"><h3 style="font-size:12px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Accesos Rápidos</h3></div>
     <div class="quick-grid">
       <div class="quick-tile tile-navy" onclick="switchTab('ia')">
         <div class="tile-icon-wrap">🤖</div>
         <div class="tile-label">Asistente IA</div>
-        <div class="tile-sub">Consultas y calles</div>
+        <div class="tile-sub">Filtros y calles</div>
       </div>
       <div class="quick-tile tile-green" onclick="switchTab('tareas')">
         <div class="tile-icon-wrap">📋</div>
         <div class="tile-label">Constataciones</div>
-        <div class="tile-sub">${pendingCount} pedidos activos</div>
+        <div class="tile-sub">${pendingCount} pendientes</div>
         ${pendingCount > 0 ? `<span class="tile-badge">${pendingCount}</span>` : ''}
       </div>
       <div class="quick-tile tile-purple" onclick="switchTab('fe_vida')">
@@ -241,29 +296,14 @@ function renderHome(container) {
       </div>
       <div class="quick-tile tile-red" onclick="triggerMockEmergency()">
         <div class="tile-icon-wrap">🚨</div>
-        <div class="tile-label">Simular Pánico</div>
-        <div class="tile-sub">Test de BAP</div>
-      </div>
-    </div>
-    
-    <!-- Jurisdicción Informativa -->
-    <div class="card" style="margin-top: 14px; background: linear-gradient(135deg, var(--pc-navy) 0%, var(--pc-navy-deep) 100%); color: #fff;">
-      <div style="font-size:10px; font-weight:700; text-transform:uppercase; color: var(--pc-gold);">Tu Jurisdicción Actual</div>
-      <div style="font-size:16px; font-weight:800; margin-top:4px;">Comisaría Vecinal 14-A</div>
-      <div style="font-size:12px; opacity:0.9; margin-top:2px;">Comuna 14 · Palermo Soho / Sur</div>
-      <div style="font-size:11px; opacity:0.75; margin-top:8px; display:flex; justify-content:space-between;">
-        <span>GPS: -34.5855, -58.4278</span>
-        <span>Precisión: ±4 metros</span>
+        <div class="tile-label">Simular BAP</div>
+        <div class="tile-sub">Test de pánico</div>
       </div>
     </div>
   `;
 }
 
-// ==========================================
-// RENDER MÓDULO: ASISTENTE IA (INICIO ACTUACIÓN)
-// ==========================================
-
-function renderIA(container) {
+function renderPhoneIA(container) {
   container.innerHTML = `
     <div class="chat-container">
       <div class="chat-history" id="chat-history">
@@ -274,32 +314,358 @@ function renderIA(container) {
         `).join('')}
       </div>
       
-      <!-- Sugerencias rápidas -->
       <div class="suggested-tags">
-        <span class="suggest-tag" onclick="sendSuggest('No sé dónde estoy, veo Plaza Armenia')">📍 ¿Dónde estoy? (Plaza Armenia)</span>
-        <span class="suggest-tag" onclick="sendSuggest('¿Cuándo se puede requisar sin orden?')">⚖ ¿Cuándo requisar sin orden?</span>
-        <span class="suggest-tag" onclick="sendSuggest('Iniciar acta por flagrancia')">🚨 Iniciar actuación</span>
+        <span class="suggest-tag" onclick="sendSuggest('¿Qué hago si el testigo no quiere firmar?')">⚖ Testigo no quiere firmar</span>
+        <span class="suggest-tag" onclick="sendSuggest('No sé dónde estoy, veo Plaza Armenia')">📍 ¿Dónde estoy?</span>
+        <span class="suggest-tag" onclick="sendSuggest('Código penal hurto')">📋 CP Hurto</span>
       </div>
       
-      <!-- Fila de ingreso de texto -->
       <div class="chat-input-row">
         <button class="chat-btn-mic" onclick="toggleChatMic()">🎤</button>
-        <input type="text" class="chat-input" id="chat-input-field" placeholder="Preguntá al Asistente SIPJU..." onkeypress="handleChatKey(event)">
+        <input type="text" class="chat-input" id="chat-input-field" placeholder="Escribí al asistente..." onkeypress="handleChatKey(event)">
         <button class="chat-btn-send" onclick="sendChatMessage()">➔</button>
       </div>
     </div>
   `;
   
-  // Scroll automatico al fondo del chat
   setTimeout(() => {
-    const history = document.getElementById("chat-history");
-    if (history) history.scrollTop = history.scrollHeight;
+    const h = document.getElementById("chat-history");
+    if (h) h.scrollTop = h.scrollHeight;
   }, 50);
 }
 
-function handleChatKey(e) {
-  if (e.key === 'Enter') sendChatMessage();
+function renderPhoneTareas(container) {
+  const pendingOficios = state.comisariaOficios.filter(o => o.estado === 'Pendiente');
+  const completedOficios = state.comisariaOficios.filter(o => o.estado === 'Completada');
+  
+  container.innerHTML = `
+    <div class="flow-header">
+      <div class="flow-title">Constataciones asignadas</div>
+      <div class="flow-sub">Jurisdicción Comisaría Vecinal 14-A</div>
+    </div>
+    
+    <div style="margin: 10px 0 6px;"><h3 style="font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Asignaciones Pendientes (${pendingOficios.length})</h3></div>
+    
+    ${pendingOficios.length === 0 ? `
+      <div class="card" style="text-align:center; padding: 24px; color: var(--text-muted); font-size:13px;">
+        No tenés constataciones asignadas.<br><br><b>Cargá un nuevo oficio desde la Consola de la Comisaría (a la derecha) para simular el despacho.</b>
+      </div>
+    ` : pendingOficios.map(oficio => `
+      <div class="card clickable" onclick="startTask('${oficio.id}')">
+        <div class="task-item">
+          <div class="task-icon-circle" style="background:var(--red-bg); color:var(--red);">⚖</div>
+          <div class="task-details">
+            <div class="task-title" style="font-size:13px;">${oficio.tipo}</div>
+            <div class="task-desc" style="font-size:11.5px;">${oficio.sujeto}</div>
+            <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">Destino: ${oficio.direccion}</div>
+          </div>
+          <div class="task-meta">
+            <div class="task-dist" style="font-size:11px;">${oficio.distancia}</div>
+            <span class="chip chip-red" style="font-size:7.5px;">${oficio.prioridad}</span>
+          </div>
+        </div>
+      </div>
+    `).join('')}
+
+    <div style="margin: 14px 0 6px;"><h3 style="font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Probations (1)</h3></div>
+    
+    <div class="card clickable" onclick="startProbationControl()">
+      <div class="task-item">
+        <div class="task-icon-circle" style="background:var(--purple-bg); color:var(--purple);">👤</div>
+        <div class="task-details">
+          <div class="task-title" style="font-size:13px;">Control Domiciliario Probation</div>
+          <div class="task-desc" style="font-size:11.5px;">ROCHA, Sergio Damián (Causa 4782/25)</div>
+        </div>
+        <div class="task-meta">
+          <div class="task-dist" style="font-size:11px;">350m</div>
+          <span class="chip chip-purple" style="font-size:7.5px;">Semanal</span>
+        </div>
+      </div>
+    </div>
+
+    ${completedOficios.length > 0 ? `
+      <div style="margin: 14px 0 6px;"><h3 style="font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Completados hoy (${completedOficios.length})</h3></div>
+      ${completedOficios.map(oficio => `
+        <div class="card" style="opacity: 0.65; padding: 10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px;">
+            <span style="font-weight:700; text-decoration:line-through;">${oficio.id} · ${oficio.tipo}</span>
+            <span class="chip chip-green" style="font-size:7px;">ENTREGADO</span>
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${oficio.sujeto}</div>
+        </div>
+      `).join('')}
+    ` : ''}
+  `;
 }
+
+function renderPhoneFeVida(container) {
+  container.innerHTML = `
+    <div class="flow-header">
+      <div class="flow-title">Fe de Vida Asistida</div>
+      <div class="flow-sub">Trámites para tercera edad en territorio</div>
+    </div>
+    <div class="card clickable" onclick="startFeVidaTask()">
+      <div class="task-item">
+        <div class="task-icon-circle" style="background:var(--amber-bg); color:var(--amber);">👴</div>
+        <div class="task-details">
+          <div class="task-title" style="font-size:13px;">Fe de Vida / Supervivencia</div>
+          <div class="task-desc" style="font-size:11.5px;">BERMÚDEZ, Juan Manuel (DNI 10.443.219)</div>
+          <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">Guatemala 4210, 2º 'A' · Palermo Soho</div>
+        </div>
+        <div class="task-meta">
+          <div class="task-dist" style="font-size:11px;">600m</div>
+          <span class="chip chip-amber" style="font-size:7.5px;">Solicitado</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderPhoneMapa(container) {
+  container.innerHTML = `
+    <div class="flow-header">
+      <div class="flow-title">Geocercas de Prevención</div>
+      <div class="flow-sub">Cruce GPS Tobillera / Botón Antipánico (BAP)</div>
+    </div>
+    
+    <div class="map-view">
+      <!-- Pin del oficial en Plaza Armenia -->
+      <div class="map-pin-oficial" style="top: 40%; left: 38%;"></div>
+      
+      <!-- Pin de la víctima Ríos Elena en Uriarte 1428 -->
+      <div class="map-pin-target" style="top: 35%; left: 30%; color:var(--red);" onclick="alert('Víctima protegida: Ríos Elena (Uriarte 1428)')">📍</div>
+      
+      <!-- Círculo de la geocerca de exclusión (500m) en torno a Ríos Elena -->
+      <div class="map-perimeter" style="top: 35%; left: 30%; width: 180px; height: 180px;"></div>
+      
+      <!-- Pin del agresor Sergio Rocha con animación de movimiento -->
+      <div class="map-pin-target" style="top: ${state.agresorPinPos.top}%; left: ${state.agresorPinPos.left}%; color:var(--amber);" id="agresor-pin">🏃</div>
+      
+      <svg class="map-svg" viewBox="0 0 400 300">
+        <!-- Calles de Palermo -->
+        <line x1="0" y1="50" x2="400" y2="50" stroke="#CBD5E1" stroke-width="4" />
+        <line x1="0" y1="120" x2="400" y2="120" stroke="#CBD5E1" stroke-width="6" />
+        <line x1="0" y1="210" x2="400" y2="210" stroke="#CBD5E1" stroke-width="4" />
+        
+        <line x1="120" y1="0" x2="120" y2="300" stroke="#CBD5E1" stroke-width="4" />
+        <line x1="220" y1="0" x2="220" y2="300" stroke="#CBD5E1" stroke-width="4" />
+        
+        <!-- Plaza Armenia -->
+        <rect x="135" y="135" width="70" height="60" rx="8" fill="#A7F3D0" stroke="#6EE7B7" stroke-width="1.5" />
+      </svg>
+    </div>
+    
+    <div class="card" style="padding: 12px;">
+      <div style="font-size:12.5px; line-height:1.4;">
+        <div style="font-weight:700; color:var(--red); display:flex; justify-content:space-between;">
+          <span>Estado del perímetro (BAP):</span>
+          <span>${state.agresorDist} metros</span>
+        </div>
+        <div style="font-size:11.5px; color:var(--text-muted); margin-top:4px;">
+          Sujeto excluido: ROCHA, Sergio Damián.<br>
+          Víctima protegida: RÍOS, Elena Victoria (Uriarte 1428).<br>
+          <span style="color:var(--amber); font-weight:600;">El pin se está moviendo. Si cruza el límite de 500m saltará el Alerta Preventora.</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ==========================================
+// RENDER: CONSOLA DE LA COMISARÍA (DERECHA)
+// ==========================================
+
+function renderPrecinctView() {
+  const container = document.getElementById("console-body");
+  if (!container) return;
+  
+  const oficiosTabla = state.comisariaOficios.map(o => `
+    <tr>
+      <td style="font-weight:700;">${o.id}</td>
+      <td>${o.tipo}</td>
+      <td style="font-size:11.5px;">${o.sujeto.split(" (")[0]}</td>
+      <td><span class="chip ${o.prioridad === 'ALTA' ? 'chip-red' : 'chip-amber'}" style="font-size:8px;">${o.prioridad}</span></td>
+      <td><span class="chip ${o.estado === 'Completada' ? 'chip-green' : 'chip-navy'}" style="font-size:8px;">${o.estado}</span></td>
+    </tr>
+  `).join('');
+  
+  let ocrWidgetHtml = "";
+  if (state.ocrStatus === null) {
+    ocrWidgetHtml = `
+      <div style="border: 2px dashed #475569; border-radius:12px; padding:24px; text-align:center; cursor:pointer;" onclick="triggerSimulateOcr()">
+        <span style="font-size:32px;">📄</span>
+        <div style="font-weight:700; color:#fff; margin-top:8px;">Recibir y Subir Oficio Judicial</div>
+        <div style="font-size:11px; color:#94A3B8; margin-top:4px;">Arrastrá el PDF o hacé clic para cargar (simula recibir un Oficio por EJE o Mail de fiscalía)</div>
+      </div>
+    `;
+  } else if (state.ocrStatus === 'scanning') {
+    ocrWidgetHtml = `
+      <div class="ocr-loading-box">
+        <span style="font-size:28px; animation: pulse 1.5s infinite;">🧠</span>
+        <div style="font-weight:700; color:#fff; margin-top:8px;">Procesando Oficio con IA (OCR)...</div>
+        <div style="font-size:11px; color:#94A3B8; margin-top:2px;">Extrayendo caratula, CUIJ, domicilio e imputado.</div>
+        <div class="ocr-bar"></div>
+      </div>
+    `;
+  } else if (state.ocrStatus === 'ready') {
+    ocrWidgetHtml = `
+      <div class="console-card" style="border: 2px solid var(--green); margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <span class="chip chip-green">✓ Extracción IA/OCR Completada</span>
+          <span style="font-size:10px; color:var(--text-muted);">Causa: J-01-00115790-2</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px; font-size:12.5px;">
+          <div><b style="color:#94A3B8;">Tipo:</b> ${state.ocrData.tipo}</div>
+          <div><b style="color:#94A3B8;">Sujeto:</b> ${state.ocrData.sujeto}</div>
+          <div><b style="color:#94A3B8;">Dirección:</b> <span style="color:var(--pc-gold); font-weight:700;">${state.ocrData.direccion}</span></div>
+          <div><b style="color:#94A3B8;">Juez Solicitante:</b> ${state.ocrData.origen}</div>
+        </div>
+        
+        <div style="border-top:1px solid #334155; margin-top:10px; padding-top:10px;">
+          <div style="font-size:11px; font-weight:700; color:#94A3B8; text-transform:uppercase; margin-bottom:6px;">Despacho por Proximidad GPS</div>
+          <div style="font-size:12px; margin-bottom:8px;">
+            Oficial más cercano: <b style="color:var(--pc-blue-bright);">Oficial Aguirre</b> (a 180 metros).
+          </div>
+          <button class="btn-large gold" style="height:38px; font-size:12.5px;" onclick="dispatchOficio()">Despachar a Oficial Aguirre ➔</button>
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = `
+    <!-- Columna de Oficios Recibidos en Comisaría -->
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div class="console-card" style="flex:1;">
+        <div class="console-section-title">
+          <span>Bandeja de Entrada de Oficios</span>
+          <span style="font-size:10px; background:#334155; padding:2px 8px; border-radius:10px;">Comisaría 14-A</span>
+        </div>
+        <table class="console-table">
+          <thead>
+            <tr>
+              <th>ID Oficio</th>
+              <th>Trámite</th>
+              <th>Sujeto</th>
+              <th>Prioridad</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${oficiosTabla}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- Columna de Carga y Despacho Georreferenciado -->
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div class="console-card">
+        <div class="console-section-title">Carga de Documento</div>
+        ${ocrWidgetHtml}
+      </div>
+      
+      <div class="console-card" style="flex:1;">
+        <div class="console-section-title">Oficiales Activos en Cuadrante</div>
+        <div style="display:flex; flex-direction:column; gap:10px; font-size:12.5px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:#0F172A; border-radius:8px; border-left:4px solid var(--pc-blue-bright);">
+            <div>
+              <b>Oficial Aguirre, M. (Móvil 4231)</b>
+              <div style="font-size:10.5px; color:var(--text-muted);">Última actividad: Justo ahora · GPS Activo</div>
+            </div>
+            <span class="chip chip-green">Libre</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:#0F172A; border-radius:8px; border-left:4px solid #475569; opacity:0.6;">
+            <div>
+              <b>Oficial Pérez, J. (Móvil 4232)</b>
+              <div style="font-size:10.5px; color:var(--text-muted);">Última actividad: hace 12 min · GPS Activo</div>
+            </div>
+            <span class="chip chip-amber">Ocupado</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ==========================================
+// CONTROLADORES DE EVENTOS EN COMISARÍA
+// ==========================================
+
+function triggerSimulateOcr() {
+  state.ocrStatus = 'scanning';
+  renderApp();
+  
+  setTimeout(() => {
+    state.ocrStatus = 'ready';
+    state.ocrData = {
+      id: "OF-2026-1157",
+      origen: "Juzgado Penal Contravencional y de Faltas Nº 2",
+      juez: "Dr. Ferreira",
+      causa: "Nº 115790/2026 s/ Habeas Corpus",
+      tipo: "Constatación Habeas Corpus",
+      sujeto: "ABDURRAMAN, Yamila (DNI 27.580.092)",
+      direccion: "Costa Rica 4820, CABA",
+      distancia: "180 metros",
+      prioridad: "ALTA",
+      plazo: "24 horas",
+      comisaria: "Comisaría Vecinal 14-A",
+      estado: "Pendiente"
+    };
+    renderApp();
+  }, 2500);
+}
+
+function dispatchOficio() {
+  if (!state.ocrData) return;
+  
+  state.comisariaOficios.unshift({...state.ocrData});
+  state.ocrStatus = null;
+  state.ocrData = null;
+  
+  renderApp();
+  
+  setTimeout(() => {
+    const pushEl = document.getElementById("push-notif");
+    if (pushEl) {
+      document.getElementById("push-title").textContent = "Nuevo Oficio Asignado ⚖";
+      document.getElementById("push-text").textContent = "Constatación Habeas Corpus - Abdurraman, Y. en Costa Rica 4820 (a 180m).";
+      pushEl.classList.add("show");
+      
+      playBeep();
+      
+      setTimeout(() => {
+        pushEl.classList.remove("show");
+      }, 5000);
+    }
+  }, 1000);
+}
+
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+  } catch (e) {
+    console.log("Audio blocked:", e.message);
+  }
+}
+
+function dismissPushNotification() {
+  const pushEl = document.getElementById("push-notif");
+  if (pushEl) pushEl.classList.remove("show");
+}
+
+// ==========================================
+// CHAT IA DEL POLICÍA
+// ==========================================
 
 function sendSuggest(text) {
   const input = document.getElementById("chat-input-field");
@@ -312,9 +678,13 @@ function sendSuggest(text) {
 function toggleChatMic() {
   const input = document.getElementById("chat-input-field");
   if (input) {
-    input.value = "Dictando: Estoy persiguiendo sospechoso por calle Costa Rica...";
+    input.value = "Dictando: Procedo al control del domicilio de Sergio Rocha...";
     input.focus();
   }
+}
+
+function handleChatKey(e) {
+  if (e.key === 'Enter') sendChatMessage();
 }
 
 function sendChatMessage() {
@@ -325,18 +695,19 @@ function sendChatMessage() {
   state.chatMessages.push({ sender: 'user', text: text });
   input.value = "";
   
-  renderApp(); // Render user message immediately
+  renderApp();
   
-  // Respuestas automáticas simuladas del asistente IA
-  let response = "No comprendo tu consulta en esta versión de pruebas. Probá tocando uno de los accesos rápidos sugeridos.";
-  
+  let response = "No comprendo tu consulta en esta versión de pruebas. Probá tocando una de las etiquetas sugeridas.";
   const textLower = text.toLowerCase();
-  if (textLower.includes("plaza armenia") || textLower.includes("dónde estoy") || textLower.includes("donde estoy")) {
-    response = "📍 **Ubicación Detectada (Asistente IA):**\nTe encontrás junto a la **Plaza Armenia** en **Costa Rica 4500 (entre Malabia y Armenia)**, Comuna 14, Palermo Soho.\n\n• **Jurisdicción:** Comisaría Vecinal 14-A.\n• **Fiscalía de Guardia:** Unidad de Flagrancia Norte (Cabanillas 331).\n• **Jefe de Zona:** Comisario Inspector González.\n\n¿Querés que inicialice un **Acta de Intervención** georreferenciada en este lugar?";
-  } else if (textLower.includes("requisar") || textLower.includes("requisa") || textLower.includes("sin orden")) {
-    response = "⚖ **Protocolo de Requisa sin Orden (CPP CABA Art. 85):**\n\nSolo podés requisar personas sin orden judicial si hay:\n1. **Indicios objetivos** de que la persona oculta cosas delictivas o armas en su cuerpo o vestimenta.\n2. **Urgencia extrema** que impida pedir orden.\n\n**REGLAS CRÍTICAS DE PROCEDIMIENTO:**\n• Debés advertirle primero que entregue la cosa voluntariamente.\n• La requisa debe hacerse por persona del mismo sexo.\n• Debés contar con **un testigo ajeno a la fuerza** (obligatorio) o fundar en acta por qué no se pudo conseguir.\n• **¡Todo debe ser grabado por tu Body Cam!**";
-  } else if (textLower.includes("actuación") || textLower.includes("iniciar")) {
-    response = "🚨 **Asistente de Actuación SIPJU:**\nHe iniciado un borrador de legajo electrónico.\n\n• **Hora:** " + new Date().toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'}) + " hs\n• **Lugar:** Costa Rica 4500, Palermo\n• **Causa Inicial:** Intervención de Prevención\n\nPor favor, dirígete al módulo de **Tareas** para ver la orden o pulsa **Escanear DNI** para identificar al primer involucrado.";
+  
+  if (textLower.includes("testigo") || textLower.includes("negar") || textLower.includes("firma")) {
+    response = "⚖ **Protocolo ante Negativa de Testigo (CPP CABA Art. 99):**\n\nSi el testigo de actuación se niega a firmar el acta:\n1. **No anula el acta**: El acta sigue siendo válida si dejás constancia explícita de su negativa y del motivo que alegue.\n2. **Testigo Alternativo**: De ser posible, buscá un segundo testigo civil que firme en disconformidad o certifique que presenció el acto.\n3. **Justificación Fundada**: Si la zona es hostil o peligrosa, registrá en el acta y en el video del Body Cam la imposibilidad de mantener al testigo en el lugar por riesgo físico. La grabación del body cam servirá de respaldo procesal.";
+  } else if (textLower.includes("plaza armenia") || textLower.includes("donde estoy") || textLower.includes("dónde estoy")) {
+    response = "📍 **Ubicación Resolvida por IA:**\nTe encontrás junto a la **Plaza Armenia** en **Costa Rica 4500 (entre Malabia y Armenia)**, Comuna 14, Palermo.\n\n• **Jurisdicción:** Comisaría Vecinal 14-A.\n• **Fiscalía de Turno:** UFS (Unidad de Flagrancia Sur).\n\n¿Querés registrar tu inicio de patrullaje en esta esquina?";
+  } else if (textLower.includes("hurto") || textLower.includes("162")) {
+    response = "📋 **Artículo 162 del Código Penal (Hurto):**\n\n*\"Será reprimido con prisión de un mes a dos años, el que se apoderare ilegítimamente de una cosa mueble, total o parcialmente ajena, sin fuerza en las cosas ni violencia física en las personas.\"*\n\n• **Flagrancia**: Si es atrapado in fraganti, procedé a la aprehensión (CPP Art. 152) y da aviso inmediato a la UFS.";
+  } else if (textLower.includes("robo") || textLower.includes("164")) {
+    response = "📋 **Artículo 164 del Código Penal (Robo):**\n\n*\"Será reprimido con prisión de un mes a seis años, el que se apoderare ilegítimamente de una cosa mueble, total o parcialmente ajena, con fuerza en las cosas o violencia física en las personas...\"*\n\n• **Diferencia con Hurto**: La presencia de violencia o roturas (fuerza) califica el hecho como robo y aumenta la escala penal.";
   }
   
   setTimeout(() => {
@@ -346,83 +717,98 @@ function sendChatMessage() {
 }
 
 // ==========================================
-// RENDER MÓDULO: TAREAS (CONSTATACIONES / CONTROLES)
+// SIMULACIÓN GEOCERCA (BAP)
 // ==========================================
 
-function renderTareas(container) {
-  const pendingOficios = state.comisariaOficios.filter(o => o.estado === 'Pendiente');
-  const completedOficios = state.comisariaOficios.filter(o => o.estado === 'Completada');
-  
-  container.innerHTML = `
-    <div class="flow-header">
-      <div class="flow-title">Pedidos de Constatación</div>
-      <div class="flow-sub">Oficios judiciales y fiscales asignados a tu móvil por cercanía</div>
-    </div>
-    
-    <div class="alert-box info">
-      <div class="at">Despacho por Proximidad</div>
-      La comisaría cargó estos pedidos recibidos por sistema EJE/Mail. Tu móvil está en zona y los recibe por GPS.
-    </div>
-    
-    <div style="margin: 14px 0 6px;"><h3 style="font-size:12px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Asignados Pendientes (${pendingOficios.length})</h3></div>
-    
-    ${pendingOficios.length === 0 ? `
-      <div class="card" style="text-align:center; padding: 20px; color: var(--text-muted);">
-        No tenés constataciones pendientes.
-      </div>
-    ` : pendingOficios.map(oficio => `
-      <div class="card clickable" onclick="startTask('${oficio.id}')">
-        <div class="task-item">
-          <div class="task-icon-circle" style="background:var(--red-bg); color:var(--red);">⚖</div>
-          <div class="task-details">
-            <div class="task-title">${oficio.tipo}</div>
-            <div class="task-desc">${oficio.sujeto}</div>
-            <div style="font-size:10.5px; color:var(--text-muted); margin-top:2px;">Origen: ${oficio.origen}</div>
-          </div>
-          <div class="task-meta">
-            <div class="task-dist">${oficio.distancia}</div>
-            <span class="chip chip-red" style="font-size:8px;">${oficio.prioridad}</span>
-          </div>
-        </div>
-      </div>
-    `).join('')}
-
-    <div style="margin: 18px 0 6px;"><h3 style="font-size:12px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Controles de Probation Activos (1)</h3></div>
-    
-    <div class="card clickable" onclick="startProbationControl()">
-      <div class="task-item">
-        <div class="task-icon-circle" style="background:var(--purple-bg); color:var(--purple);">👤</div>
-        <div class="task-details">
-          <div class="task-title">Control Domiciliario (Reglas de Conducta)</div>
-          <div class="task-desc">ROCHA, Sergio Damián (Causa 4782/25)</div>
-          <div style="font-size:10.5px; color:var(--text-muted); margin-top:2px;">Fijar residencia · Control mensual</div>
-        </div>
-        <div class="task-meta">
-          <div class="task-dist">350 metros</div>
-          <span class="chip chip-purple" style="font-size:8px;">Rutinario</span>
-        </div>
-      </div>
-    </div>
-
-    ${completedOficios.length > 0 ? `
-      <div style="margin: 18px 0 6px;"><h3 style="font-size:12px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Completados Hoy (${completedOficios.length})</h3></div>
-      ${completedOficios.map(oficio => `
-        <div class="card" style="opacity: 0.7;">
-          <div class="task-item">
-            <div class="task-icon-circle" style="background:var(--green-bg); color:var(--green);">✓</div>
-            <div class="task-details">
-              <div class="task-title" style="text-decoration:line-through;">${oficio.tipo}</div>
-              <div class="task-desc">${oficio.sujeto}</div>
-            </div>
-            <div class="task-meta">
-              <span class="chip chip-green" style="font-size:8px;">CERRADO</span>
-            </div>
-          </div>
-        </div>
-      `).join('')}
-    ` : ''}
-  `;
+function startMapLoop() {
+  setInterval(() => {
+    if (state.tab === 'mapa' && !state.alertActive) {
+      if (state.agresorDist > 100) {
+        state.agresorDist -= 40;
+        state.agresorPinPos.left -= 2.5;
+        state.agresorPinPos.top -= 1.25;
+        
+        renderApp();
+        
+        if (state.agresorDist <= 200) {
+          triggerMockEmergency();
+        }
+      }
+    }
+  }, 4000);
 }
+
+function triggerMockEmergency() {
+  state.alertActive = true;
+  state.alertData = {
+    tipo: "BOTÓN ANTIPÁNICO / GEOCERCA INFRINGIDA",
+    causa: "Causa 78/26 s/ Violencia de Género",
+    victima: "RÍOS, Elena Victoria (Uriarte 1428)",
+    agresor: "ROCHA, Sergio Damián (DNI 32.114.897)",
+    posicionAgresor: "Uriarte y Costa Rica (A 120 metros)",
+    distanciaVictima: "120 metros de la víctima (Umbral de exclusión: 500m)"
+  };
+  renderApp();
+  playAlarmSound();
+}
+
+function playAlarmSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const playTone = (freq, duration, time) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(freq, time);
+      gain.gain.setValueAtTime(0.05, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(time);
+      osc.stop(time + duration);
+    };
+    
+    let now = ctx.currentTime;
+    playTone(550, 0.4, now);
+    playTone(440, 0.4, now + 0.4);
+    playTone(550, 0.4, now + 0.8);
+    playTone(440, 0.4, now + 1.2);
+  } catch (e) {
+    console.log("Alarm sound blocked:", e.message);
+  }
+}
+
+function acceptEmergency() {
+  state.alertActive = false;
+  state.tab = "mapa";
+  renderApp();
+  setTimeout(() => {
+    alert("Navegación GPS de emergencia iniciada hacia Uriarte 1428. El Móvil 4232 ha sido despachado como refuerzo de cobertura.");
+  }, 100);
+}
+
+function closeEmergency() {
+  state.alertActive = false;
+  state.alertData = null;
+  renderApp();
+}
+
+function switchTab(tabId) {
+  state.tab = tabId;
+  state.activeTask = null;
+  state.taskStep = 0;
+  
+  const tabs = document.querySelectorAll(".nav-tab");
+  tabs.forEach(t => {
+    t.classList.toggle("active", t.dataset.tab === tabId);
+  });
+  
+  renderApp();
+}
+
+// ==========================================
+// FLUJOS DEL CELULAR DEL OFICIAL
+// ==========================================
 
 function startTask(id) {
   state.activeTask = state.comisariaOficios.find(o => o.id === id);
@@ -448,41 +834,6 @@ function startProbationControl() {
   renderApp();
 }
 
-// ==========================================
-// RENDER MÓDULO: FE DE VIDA (SUPERVIVENCIA)
-// ==========================================
-
-function renderFeVida(container) {
-  container.innerHTML = `
-    <div class="flow-header">
-      <div class="flow-title">Fe de Vida Asistida</div>
-      <div class="flow-sub">Trámite de supervivencia para tercera edad y discapacitados en domicilio</div>
-    </div>
-    
-    <div class="alert-box gold">
-      <div class="at">Trámite Comunitario Asistido</div>
-      Vecinos con movilidad reducida solicitan este trámite por la app miBA. El policía de calle se acerca al domicilio, valida identidad con datos biométricos y firma en pantalla.
-    </div>
-    
-    <div style="margin: 14px 0 6px;"><h3 style="font-size:12px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Asignados Pendientes (1)</h3></div>
-    
-    <div class="card clickable" onclick="startFeVidaTask()">
-      <div class="task-item">
-        <div class="task-icon-circle" style="background:var(--amber-bg); color:var(--amber);">👴</div>
-        <div class="task-details">
-          <div class="task-title">Fe de Vida / Supervivencia</div>
-          <div class="task-desc">BERMÚDEZ, Juan Manuel (78 años)</div>
-          <div style="font-size:10.5px; color:var(--text-muted); margin-top:2px;">Guatemala 4210, 2º 'A' · Palermo Soho</div>
-        </div>
-        <div class="task-meta">
-          <div class="task-dist">600 metros</div>
-          <span class="chip chip-amber" style="font-size:8px;">Prioritario</span>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
 function startFeVidaTask() {
   state.activeTask = {
     id: "FE-VIDA-001",
@@ -500,68 +851,8 @@ function startFeVidaTask() {
   renderApp();
 }
 
-// ==========================================
-// RENDER MÓDULO: MAPA GENERAL PALERMO
-// ==========================================
-
-function renderMapaView(container) {
-  container.innerHTML = `
-    <div class="flow-header">
-      <div class="flow-title">Mapa de Geocercas de Prevención</div>
-      <div class="flow-sub">Comuna 14 · Visualización en tiempo real de perímetros de exclusión y alarmas</div>
-    </div>
-    
-    <div class="map-view">
-      <!-- Pin del oficial en Plaza Armenia -->
-      <div class="map-pin-oficial" style="top: 40%; left: 38%;"></div>
-      
-      <!-- Pin de la víctima Ríos Elena en Uriarte 1428 -->
-      <div class="map-pin-target" style="top: 35%; left: 30%; color:var(--red);" onclick="alert('Víctima protegida: Ríos Elena (Uriarte 1428)')">📍</div>
-      
-      <!-- Círculo de la geocerca de exclusión (500m) en torno a Ríos Elena -->
-      <div class="map-perimeter" style="top: 35%; left: 30%; width: 220px; height: 220px;"></div>
-      
-      <!-- Pin del agresor Sergio Rocha -->
-      <div class="map-pin-target" style="top: 55%; left: 75%; color:var(--amber);" id="agresor-pin">🏃</div>
-      
-      <svg class="map-svg" viewBox="0 0 400 300">
-        <!-- Calles principales de Palermo -->
-        <line x1="0" y1="50" x2="400" y2="50" stroke="#CBD5E1" stroke-width="6" />
-        <line x1="0" y1="120" x2="400" y2="120" stroke="#CBD5E1" stroke-width="8" />
-        <text x="10" y="115" fill="#94A3B8" font-size="9" font-weight="bold">Av. Scalabrini Ortiz</text>
-        <line x1="0" y1="210" x2="400" y2="210" stroke="#CBD5E1" stroke-width="6" />
-        
-        <line x1="120" y1="0" x2="120" y2="300" stroke="#CBD5E1" stroke-width="6" />
-        <text x="125" y="280" fill="#94A3B8" font-size="9" font-weight="bold" transform="rotate(-90,125,280)">Calle Costa Rica</text>
-        <line x1="220" y1="0" x2="220" y2="300" stroke="#CBD5E1" stroke-width="6" />
-        
-        <!-- Plaza Armenia -->
-        <rect x="135" y="135" width="70" height="60" rx="8" fill="#A7F3D0" stroke="#6EE7B7" stroke-width="2" />
-        <text x="142" y="165" fill="#047857" font-size="8" font-weight="bold">P. Armenia</text>
-      </svg>
-    </div>
-    
-    <div class="card">
-      <div class="card-title">Leyenda del mapa</div>
-      <div style="display:flex; flex-direction:column; gap:6px; font-size:12.5px; margin-top:8px;">
-        <div style="display:flex; align-items:center; gap:8px;"><span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:var(--pc-blue-bright);"></span><b>Tú (Oficial de Prevención)</b> · Patrullando</div>
-        <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12px;">📍</span><b>RÍOS, Elena (Víctima)</b> · Uriarte 1428</div>
-        <div style="display:flex; align-items:center; gap:8px;"><span style="display:inline-block; width:20px; height:20px; border-radius:50%; background:rgba(239, 68, 68, 0.15); border:1px dashed var(--red);"></span><b>Perímetro Exclusión Judicial</b> · Radio 500m</div>
-        <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12px;">🏃</span><b>ROCHA, Sergio (Agresor)</b> · Monitoreo GPS Tobillera</div>
-      </div>
-    </div>
-    
-    <button class="btn-large danger" onclick="triggerMockEmergency()">Simular Infracción Perímetro (BAP) 🚨</button>
-  `;
-}
-
-// ==========================================
-// FLUJOS OPERATIVOS PASO A PASO (OFICIAL)
-// ==========================================
-
 function renderActiveTaskFlow(container) {
   const t = state.activeTask;
-  
   if (t.id.startsWith("OF-")) {
     renderConstatacionFlow(container, t);
   } else if (t.id.startsWith("PROB-")) {
@@ -571,16 +862,13 @@ function renderActiveTaskFlow(container) {
   }
 }
 
-// ---- FLUJO 1: CONSTATACIÓN DE DOMICILIO (OFICIO JUDICIAL/FISCAL) ----
 function renderConstatacionFlow(container, task) {
   const step = state.taskStep;
-  const steps = ["Arribo", "DNI Inquilino", "Acta por Voz", "Foto Fachada", "Firma Testigo"];
-  const progressBars = steps.map((s, i) => `<div class="progress-step ${i < step ? 'done' : i === step ? 'active' : ''}"></div>`).join('');
+  const steps = ["Arribo", "Identificar", "Acta Voz", "Fachada", "Firma"];
+  const progress = steps.map((s, i) => `<div class="progress-step ${i < step ? 'done' : i === step ? 'active' : ''}"></div>`).join('');
   
-  let headerHtml = `
-    <div class="back-btn-row">
-      <button class="btn-back" onclick="cancelActiveTask()">← Salir de tarea</button>
-    </div>
+  let html = `
+    <div class="back-btn-row"><button class="btn-back" onclick="cancelActiveTask()">← Salir de tarea</button></div>
     <div class="flow-header">
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <span class="chip chip-red">${task.tipo}</span>
@@ -589,388 +877,175 @@ function renderConstatacionFlow(container, task) {
       <div class="flow-title" style="margin-top:6px;">${task.sujeto}</div>
       <div class="flow-sub">Destino: ${task.direccion}</div>
     </div>
-    <div class="progress-bar">${progressBars}</div>
+    <div class="progress-bar" style="display:flex; gap:4px; height:4px; background:#E2E8F0; border-radius:2px; margin-bottom:14px;">
+      ${progress}
+    </div>
   `;
   
-  let bodyHtml = "";
-  
   if (step === 0) {
-    bodyHtml = `
+    html += `
       <div class="card">
-        <div class="card-title">1. Verificación de Arribo al Domicilio</div>
-        <div class="card-subtitle" style="margin-bottom:12px;">El sistema requiere confirmar presencia en zona por GPS antes de abrir el formulario.</div>
-        <div class="info-row"><span class="k">Destino Requerido</span><span class="v">${task.direccion}</span></div>
-        <div class="info-row"><span class="k">Tu Posición GPS</span><span class="v">Frente al domicilio (Precisión 2m)</span></div>
-        <div class="info-row"><span class="k">Cámara Corporal</span><span class="v green">GRABANDO</span></div>
+        <div class="card-title">1. Confirmación de Arribo</div>
+        <div class="card-subtitle">Cerca del lugar de la constatación.</div>
+        <div class="info-row" style="display:flex; justify-content:space-between; margin-top:10px; font-size:12.5px;"><span style="color:var(--text-muted);">Ubicación</span><b>En el destino ✓</b></div>
+        <div class="info-row" style="display:flex; justify-content:space-between; margin-top:4px; font-size:12.5px;"><span style="color:var(--text-muted);">Cámara de chaleco</span><span style="color:var(--green); font-weight:700;">TRANSMITIENDO</span></div>
       </div>
-      
-      <div class="map-view" style="height:120px; margin-bottom:14px;">
-        <div class="map-pin-oficial" style="top: 50%; left: 50%;"></div>
-        <svg class="map-svg" viewBox="0 0 400 300">
-          <line x1="0" y1="150" x2="400" y2="150" stroke="#94A3B8" stroke-width="8" />
-          <line x1="200" y1="0" x2="200" y2="300" stroke="#CBD5E1" stroke-width="6" />
-        </svg>
-      </div>
-      
-      <div class="card clickable" style="border-left:4px solid var(--pc-navy);" onclick="showOficioDetail('${task.id}')">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <div style="font-size:12.5px; font-weight:700; color:var(--pc-navy);">Ver PDF Oficio Judicial</div>
-            <div style="font-size:11px; color:var(--text-muted);">${task.id} · Carga por Comisaría</div>
-          </div>
-          <span style="font-size:18px;">📄</span>
-        </div>
-      </div>
-      
-      <button class="btn-large success" onclick="nextStep()">Confirmar Arribo al Lugar ✓</button>
+      <button class="btn-large success" onclick="nextStep()">Confirmar Presencia ✓</button>
     `;
-  }
-  
-  else if (step === 1) {
-    bodyHtml = `
+  } else if (step === 1) {
+    html += `
       <div class="card">
-        <div class="card-title">2. Identificación del Ocupante</div>
-        <div class="card-subtitle">Pedile el DNI físico al morador que abre la puerta y escanealo.</div>
+        <div class="card-title">2. Identificar Residente</div>
+        <div class="card-subtitle">Escanear el DNI de la persona que abre el domicilio.</div>
       </div>
-      
       ${state.dniScannedData ? `
         <div class="dni-card">
           <div class="dni-header">
-            <span class="dni-title">DNI Nacional · RENAPER</span>
-            <span class="chip chip-green" style="background:#fff; color:var(--green); font-size:8px;">VÁLIDO</span>
+            <span class="dni-title">RENAPER Registro Nacional</span>
+            <span class="chip chip-green" style="background:#fff; color:var(--green); font-size:8px;">OK</span>
           </div>
           <div class="dni-body">
             <div class="dni-photo-mock">👤</div>
             <div class="dni-fields">
-              <div class="dni-field"><span class="dni-label">Nombre Completo</span><span class="dni-value">${state.dniScannedData.nombre}</span></div>
-              <div class="dni-field"><span class="dni-label">Documento</span><span class="dni-value">${state.dniScannedData.dni}</span></div>
-              <div class="dni-field"><span class="dni-label">Edad / Sexo</span><span class="dni-value">${state.dniScannedData.edad} / M</span></div>
+              <div class="dni-field"><span class="dni-label">Nombre</span><span class="dni-value">${state.dniScannedData.nombre}</span></div>
+              <div class="dni-field"><span class="dni-label">DNI</span><span class="dni-value">${state.dniScannedData.dni}</span></div>
             </div>
           </div>
         </div>
-        
-        <div class="form-group" style="margin-top:14px;">
-          <label class="form-label">Carácter del residente</label>
-          <select class="form-select" id="morador-relation">
-            <option>Titular bajo probation / Imputado</option>
-            <option>Conviviente / Familiar directo</option>
-            <option>Locatario / Tercero inquilino</option>
-          </select>
-        </div>
-        
-        <div class="btn-row">
-          <button class="btn-large secondary" onclick="resetDniScan()">Escanear de Nuevo</button>
-          <button class="btn-large primary" onclick="nextStep()">Continuar →</button>
-        </div>
+        <button class="btn-large primary" style="margin-top:14px;" onclick="nextStep()">Continuar →</button>
       ` : `
         <div class="scanner-container">
-          <div class="scanner-viewfinder">
-            <div class="scan-line"></div>
-          </div>
-          <div class="scanner-hint">Alineá el código de barras del DNI</div>
+          <div class="scanner-viewfinder"><div class="scan-line"></div></div>
+          <div class="scanner-hint">Enfocar código de barras del DNI</div>
         </div>
-        <div class="btn-row">
-          <button class="btn-large gold" onclick="simulateDniScan('32114897')">Simular Escaneo Rocha, Sergio (Sospechoso)</button>
-        </div>
-        <div style="margin-top:10px; text-align:center;">
-          <a href="#" style="font-size:12px; color:var(--pc-navy); font-weight:700;" onclick="simulateDniScan('10443219')">Simular Escaneo Bermúdez, Juan (Tercero)</a>
-        </div>
+        <button class="btn-large gold" style="margin-top:14px;" onclick="simulateDniScan('27580092')">Simular DNI Abdurraman (Habeas)</button>
+        <button class="btn-large secondary" style="margin-top:8px;" onclick="simulateDniScan('32114897')">Simular DNI Rocha (Probation)</button>
       `}
-    `;
-  }
-  
-  else if (step === 2) {
-    bodyHtml = `
-      <div class="card">
-        <div class="card-title">3. Relato del Procedimiento</div>
-        <div class="card-subtitle">Dictale a la app lo que ves para que la IA prerrellene el acta.</div>
-      </div>
-      
-      <div class="audio-recorder">
-        <div class="wave-container ${state.isRecordingAudio ? 'active' : ''}" id="wave-container">
-          <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-          <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-          <div class="wave-bar"></div>
-        </div>
-        
-        <button class="btn-large ${state.isRecordingAudio ? 'danger' : 'primary'}" onclick="toggleAudioRecording()">
-          ${state.isRecordingAudio ? '■ Detener Dictado' : '🎤 Empezar Dictado de Acta'}
-        </button>
-      </div>
-      
-      <div class="form-group">
-        <label class="form-label">Texto del Acta Constatación</label>
-        <textarea class="form-textarea" id="acta-text" placeholder="El texto transcrito aparecerá acá..." rows="4">${state.audioTranscript}</textarea>
-      </div>
-      
-      <button class="btn-large primary" onclick="saveTranscriptAndNext()">Guardar Acta y Continuar →</button>
-    `;
-  }
-  
-  else if (step === 3) {
-    bodyHtml = `
-      <div class="card">
-        <div class="card-title">4. Evidencia Gráfica Obligatoria</div>
-        <div class="card-subtitle">Capturá la fachada del domicilio o el número de puerta para constatar preexistencia.</div>
-      </div>
-      
-      ${state.fotoFachadaCaptured ? `
-        <div class="scanner-container done" style="background:#E2E8F0; color:var(--green);">
-          <span style="font-size:48px;">📷</span>
-          <div style="font-weight:700; margin-top:10px;">Foto cargada y hasheada</div>
-          <div style="font-size:10px; font-family:monospace; color:var(--text-muted);">MD5: 5ec8d9a2b001a1829e...</div>
-        </div>
-        <div class="btn-row">
-          <button class="btn-large secondary" onclick="state.fotoFachadaCaptured=false; renderApp();">Tomar otra foto</button>
-          <button class="btn-large primary" onclick="nextStep()">Continuar →</button>
-        </div>
-      ` : `
-        <div class="scanner-container" style="cursor:pointer;" onclick="simulateFotoCapture()">
-          <span style="font-size:48px;">📷</span>
-          <div style="font-weight:700; margin-top:10px;">Hacé clic para capturar foto</div>
-          <div class="scanner-hint">Se registrará geolocalización y marca de tiempo EXIF</div>
-        </div>
-      `}
-    `;
-  }
-  
-  else if (step === 4) {
-    bodyHtml = `
-      <div class="card">
-        <div class="card-title">5. Firma Digital de Testigo / Conviviente</div>
-        <div class="card-subtitle">Se requiere la firma del morador o un testigo civil de actuación.</div>
-      </div>
-      
-      <div class="form-group">
-        <label class="form-label">DNI Testigo</label>
-        <input type="text" class="form-input" id="wit-dni" placeholder="Ej. 24883104" value="${state.witnessDni}" onchange="state.witnessDni=this.value">
-      </div>
-      
-      <div class="form-group">
-        <label class="form-label">Nombre Testigo</label>
-        <input type="text" class="form-input" id="wit-name" placeholder="Apellido y Nombres" value="${state.witnessName}" onchange="state.witnessName=this.value">
-      </div>
-      
-      <div class="card" style="padding:10px; margin-bottom:12px;">
-        <div class="form-label" style="margin-bottom:4px;">Método de firma de conformidad</div>
-        <div style="display:flex; gap:10px;">
-          <button class="btn-large ${state.witnessOtpVerified ? 'success' : 'secondary'}" style="height:36px; font-size:12px;" onclick="simulateSmsOtp()">
-            ${state.witnessOtpVerified ? '✓ Código SMS Verificado' : '📲 Firma por código SMS OTP'}
-          </button>
-        </div>
-      </div>
-      
-      <div class="form-label">Firma manuscrita en pantalla</div>
-      <div class="sig-pad-box ${state.isSignatureSigned ? 'signed' : ''}" onclick="simulateSignature()">
-        ${state.isSignatureSigned ? '✓ Firma Registrada Digitalmente' : 'Dibujá la firma del testigo acá (Clic para simular)'}
-      </div>
-      
-      <button class="btn-large success" onclick="finalizeTask('${task.id}')">Cerrar y Elevar Acta de Constatación ✓</button>
-    `;
-  }
-  
-  container.innerHTML = headerHtml + bodyHtml;
-}
-
-// ---- FLUJO 2: CONTROL DOMICILIARIO (PROBATION) ----
-function renderProbationFlow(container, task) {
-  const step = state.taskStep;
-  const steps = ["Ubicación", "Control Presencial", "Foto Fachada", "Firma Oficial"];
-  const progressBars = steps.map((s, i) => `<div class="progress-step ${i < step ? 'done' : i === step ? 'active' : ''}"></div>`).join('');
-  
-  let headerHtml = `
-    <div class="back-btn-row">
-      <button class="btn-back" onclick="cancelActiveTask()">← Salir de tarea</button>
-    </div>
-    <div class="flow-header">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="chip chip-purple">${task.tipo}</span>
-        <span style="font-size:11px; font-weight:700; color:var(--text-muted);">${step + 1} de ${steps.length}</span>
-      </div>
-      <div class="flow-title" style="margin-top:6px;">${task.sujeto}</div>
-      <div class="flow-sub">Destino: ${task.direccion}</div>
-    </div>
-    <div class="progress-bar">${progressBars}</div>
-  `;
-  
-  let bodyHtml = "";
-  
-  if (step === 0) {
-    bodyHtml = `
-      <div class="card">
-        <div class="card-title">1. GPS Arribo</div>
-        <div class="card-subtitle">Verificando cercanía al domicilio de probation: ${task.direccion}</div>
-        <div class="info-row"><span class="k">Tu posición</span><span class="v">En el lugar (Malabia 2340)</span></div>
-      </div>
-      <button class="btn-large success" onclick="nextStep()">Confirmar Arribo ✓</button>
-    `;
-  } else if (step === 1) {
-    bodyHtml = `
-      <div class="card">
-        <div class="card-title">2. Constatación Presencial</div>
-        <div class="card-subtitle">¿El imputado Sergio Rocha se encuentra en el domicilio?</div>
-      </div>
-      
-      <div class="form-group">
-        <label class="form-label">Resultado del control</label>
-        <select class="form-select" id="prob-presence" onchange="state.probPresence=this.value">
-          <option value="presente">Imputado presente (Satisface regla)</option>
-          <option value="ausente">Imputado ausente (Conviviente indica que no está)</option>
-          <option value="nadie">Nadie responde al timbre (Posible infracción)</option>
-        </select>
-      </div>
-      
-      <div class="form-group">
-        <label class="form-label">Observaciones de la visita</label>
-        <textarea class="form-textarea" placeholder="Ej: Se entrevista a Sergio Rocha en la puerta del domicilio. Refiere estar cumpliendo sus pautas con normalidad..."></textarea>
-      </div>
-      
-      <button class="btn-large primary" onclick="nextStep()">Continuar →</button>
     `;
   } else if (step === 2) {
-    bodyHtml = `
+    html += `
       <div class="card">
-        <div class="card-title">3. Captura Fotográfica</div>
-        <div class="card-subtitle">Tomar foto de la puerta o timbre del departamento.</div>
+        <div class="card-title">3. Dictado de Acta SIPJU</div>
+        <div class="card-subtitle">Dictale a la app tu informe de constatación.</div>
+      </div>
+      <div class="audio-recorder">
+        <div class="wave-container ${state.isRecordingAudio ? 'active' : ''}">
+          <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+          <div class="wave-bar"></div><div class="wave-bar"></div>
+        </div>
+        <button class="btn-large ${state.isRecordingAudio ? 'danger' : 'primary'}" onclick="toggleAudioRecording()">
+          ${state.isRecordingAudio ? '■ Detener Grabación' : '🎤 Iniciar Dictado de Acta'}
+        </button>
+      </div>
+      <div class="form-group">
+        <textarea class="form-textarea" id="acta-text" rows="4">${state.audioTranscript}</textarea>
+      </div>
+      <button class="btn-large primary" onclick="saveTranscriptAndNext()">Guardar y Seguir →</button>
+    `;
+  } else if (step === 3) {
+    html += `
+      <div class="card">
+        <div class="card-title">4. Fotografía de Fachada</div>
+        <div class="card-subtitle">Se requiere registrar imagen de la puerta con geolocalización.</div>
       </div>
       ${state.fotoFachadaCaptured ? `
-        <div class="scanner-container done">
-          <span style="font-size:40px;">📷</span>
-          <div style="font-weight:700;">Foto cargada y firmada</div>
+        <div class="scanner-container" style="background:var(--green-bg); color:var(--green);">
+          <span style="font-size:36px;">✓</span>
+          <div style="font-weight:700;">Foto guardada y hasheada</div>
         </div>
-        <button class="btn-large primary" onclick="nextStep()">Continuar →</button>
+        <button class="btn-large primary" style="margin-top:14px;" onclick="nextStep()">Continuar →</button>
       ` : `
         <div class="scanner-container" style="cursor:pointer;" onclick="simulateFotoCapture()">
-          <span style="font-size:40px;">📷</span>
-          <div style="font-weight:700; margin-top:10px;">Clic para tomar foto de control</div>
+          <span style="font-size:36px;">📷</span>
+          <div style="font-weight:700; margin-top:8px;">Hacé clic para capturar foto de puerta</div>
         </div>
       `}
     `;
-  } else if (step === 3) {
-    bodyHtml = `
+  } else if (step === 4) {
+    html += `
       <div class="card">
-        <div class="card-title">4. Cierre y Firma del Oficial</div>
-        <div class="card-subtitle">Certificás en carácter de declaración jurada la constatación del control.</div>
+        <div class="card-title">5. Conformidad y Cierre</div>
       </div>
-      
+      <div class="form-group">
+        <label class="form-label">Nombre del Testigo</label>
+        <input type="text" class="form-input" placeholder="Ej: Abdurraman Yamila" value="${state.witnessName}" onchange="state.witnessName=this.value">
+      </div>
+      <div class="card" style="padding:10px; margin-bottom:12px;">
+        <button class="btn-large ${state.witnessOtpVerified ? 'success' : 'secondary'}" style="height:36px; font-size:12px;" onclick="simulateSmsOtp()">
+          ${state.witnessOtpVerified ? '✓ Código SMS Verificado' : '📲 Firmar por SMS OTP'}
+        </button>
+      </div>
       <div class="sig-pad-box ${state.isSignatureSigned ? 'signed' : ''}" onclick="simulateSignature()">
-        ${state.isSignatureSigned ? '✓ Firma del Oficial Aguirre Registrada' : 'Firmá como Oficial Aguirre acá (Clic para simular)'}
+        ${state.isSignatureSigned ? '✓ Firma Registrada' : 'Firma digital del testigo acá (Clic)'}
       </div>
-      
-      <button class="btn-large success" onclick="finalizeProbation()">Enviar Control a Fiscalía ✓</button>
+      <button class="btn-large success" onclick="finalizeTask('${task.id}')">Confirmar y Cerrar Constatación ✓</button>
     `;
   }
-  
-  container.innerHTML = headerHtml + bodyHtml;
+  container.innerHTML = html;
 }
 
-// ---- FLUJO 3: FE DE VIDA / SUPERVIVENCIA ----
+function renderProbationFlow(container, task) {
+  const step = state.taskStep;
+  let html = `
+    <div class="back-btn-row"><button class="btn-back" onclick="cancelActiveTask()">← Volver</button></div>
+    <div class="flow-header">
+      <span class="chip chip-purple">${task.tipo}</span>
+      <div class="flow-title" style="margin-top:6px;">${task.sujeto}</div>
+    </div>
+  `;
+  if (step === 0) {
+    html += `
+      <div class="card">
+        <div class="card-title">Constatación de Conducta</div>
+        <div class="card-subtitle">Verificar permanencia obligatoria en domicilio.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Sujeto Presente</label>
+        <select class="form-select" id="prob-pres">
+          <option>Sí, se encuentra en el domicilio</option>
+          <option>No, no responde o está ausente</option>
+        </select>
+      </div>
+      <button class="btn-large success" onclick="finalizeProbation()">Enviar Reporte a Fiscalía ✓</button>
+    `;
+  }
+  container.innerHTML = html;
+}
+
 function renderFeVidaFlow(container, task) {
   const step = state.taskStep;
-  const steps = ["Arribo", "DNI del Vecino", "Prueba Facial", "Firma y Certificación"];
-  const progressBars = steps.map((s, i) => `<div class="progress-step ${i < step ? 'done' : i === step ? 'active' : ''}"></div>`).join('');
-  
-  let headerHtml = `
-    <div class="back-btn-row">
-      <button class="btn-back" onclick="cancelActiveTask()">← Salir de tarea</button>
-    </div>
+  let html = `
+    <div class="back-btn-row"><button class="btn-back" onclick="cancelActiveTask()">← Volver</button></div>
     <div class="flow-header">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="chip chip-amber">${task.tipo}</span>
-        <span style="font-size:11px; font-weight:700; color:var(--text-muted);">${step + 1} de ${steps.length}</span>
-      </div>
+      <span class="chip chip-amber">${task.tipo}</span>
       <div class="flow-title" style="margin-top:6px;">${task.sujeto}</div>
-      <div class="flow-sub">Dirección: ${task.direccion}</div>
     </div>
-    <div class="progress-bar">${progressBars}</div>
   `;
-  
-  let bodyHtml = "";
-  
   if (step === 0) {
-    bodyHtml = `
+    html += `
       <div class="card">
-        <div class="card-title">1. Ubicación Confirmada</div>
-        <div class="card-subtitle">Llegada a Guatemala 4210, 2º 'A'.</div>
-        <div class="info-row"><span class="k">Vecino</span><span>Juan Manuel Bermúdez (78 años)</span></div>
-        <div class="info-row"><span class="k">GPS</span><span style="color:var(--green);">✓ En Domicilio</span></div>
+        <div class="card-title">Cotejo Biométrico del Vecino</div>
+        <div class="card-subtitle">Valida la supervivencia en domicilio.</div>
       </div>
-      <button class="btn-large success" onclick="nextStep()">Iniciar Trámite de Supervivencia ✓</button>
-    `;
-  } else if (step === 1) {
-    bodyHtml = `
-      <div class="card">
-        <div class="card-title">2. Escaneo DNI del Ciudadano</div>
-        <div class="card-subtitle">Escanea el DNI para cotejar biográficamente con RENAPER.</div>
-      </div>
+      <button class="btn-large gold" onclick="simulateDniScan('10443219')">1. Escanear DNI del Ciudadano</button>
       ${state.dniScannedData ? `
-        <div class="dni-card">
-          <div class="dni-header">
-            <span class="dni-title">DNI Digitalizado</span>
-            <span class="chip chip-green" style="background:#fff; color:var(--green); font-size:8px;">VÁLIDO</span>
-          </div>
+        <div class="dni-card" style="margin-top:10px;">
           <div class="dni-body">
             <div class="dni-photo-mock">👴</div>
             <div class="dni-fields">
-              <div class="dni-field"><span class="dni-label">Nombre</span><span class="dni-value">BERMÚDEZ, Juan Manuel</span></div>
-              <div class="dni-field"><span class="dni-label">DNI</span><span class="dni-value">10.443.219</span></div>
-              <div class="dni-field"><span class="dni-label">Fecha Nacimiento</span><span class="dni-value">12/03/1948</span></div>
+              <div class="dni-value">BERMÚDEZ, Juan Manuel</div>
+              <div class="dni-value">DNI: 10.443.219</div>
             </div>
           </div>
         </div>
-        <button class="btn-large primary" style="margin-top:14px;" onclick="nextStep()">Continuar al Cotejo Biométrico →</button>
-      ` : `
-        <div class="scanner-container">
-          <div class="scanner-viewfinder">
-            <div class="scan-line"></div>
-          </div>
-          <div class="scanner-hint">Escanear código PDF417 del DNI</div>
-        </div>
-        <button class="btn-large gold" style="margin-top:14px;" onclick="simulateDniScan('10443219')">Simular Escaneo DNI Bermúdez</button>
-      `}
-    `;
-  } else if (step === 2) {
-    bodyHtml = `
-      <div class="card">
-        <div class="card-title">3. Cotejo Biométrico Facial</div>
-        <div class="card-subtitle">Tomale una foto al rostro del vecino para validar identidad en tiempo real contra la foto oficial del RENAPER.</div>
-      </div>
-      ${state.fotoFachadaCaptured ? `
-        <div class="scanner-container done" style="background:var(--green-bg); color:var(--green);">
-          <span style="font-size:36px;">👴</span>
-          <div style="font-weight:700; margin-top:8px;">Cotejo Biométrico Exitoso</div>
-          <div style="font-size:12px; font-weight:700;">Similitud: 94.8% · Identidad Homologada</div>
-        </div>
-        <button class="btn-large primary" style="margin-top:14px;" onclick="nextStep()">Proceder a la Firma →</button>
-      ` : `
-        <div class="scanner-container" style="cursor:pointer;" onclick="simulateFotoCapture()">
-          <span style="font-size:36px;">📸</span>
-          <div style="font-weight:700; margin-top:10px;">Clic para tomar foto de verificación facial</div>
-        </div>
-      `}
-    `;
-  } else if (step === 3) {
-    bodyHtml = `
-      <div class="card">
-        <div class="card-title">4. Conformidad y Firma del Ciudadano</div>
-        <div class="card-subtitle">El vecino firma digitalmente para dar fe de vida y autorizar el envío a ANSES.</div>
-      </div>
-      
-      <div class="sig-pad-box ${state.isSignatureSigned ? 'signed' : ''}" onclick="simulateSignature()">
-        ${state.isSignatureSigned ? '✓ Firma del Ciudadano Registrada' : 'Firma del Vecino Bermúdez acá (Clic para simular)'}
-      </div>
-      
-      <button class="btn-large success" onclick="finalizeFeVida()">Emitir Certificado Fe de Vida ✓</button>
+        <button class="btn-large success" style="margin-top:14px;" onclick="finalizeFeVida()">Emitir Supervivencia ANSES ✓</button>
+      ` : ''}
     `;
   }
-  
-  container.innerHTML = headerHtml + bodyHtml;
+  container.innerHTML = html;
 }
 
-// ==========================================
-// INTERACCIONES Y CONTROLADORES DE EVENTOS
-// ==========================================
-
+// Helpers del Flujo del Celular
 function nextStep() {
   state.taskStep++;
   renderApp();
@@ -988,35 +1063,28 @@ function simulateDniScan(dni) {
   renderApp();
 }
 
-function resetDniScan() {
-  state.dniScannedData = null;
-  renderApp();
-}
-
 function toggleAudioRecording() {
   state.isRecordingAudio = !state.isRecordingAudio;
-  
   if (state.isRecordingAudio) {
-    state.audioTranscript = "Escuchando audio del procedimiento...";
+    state.audioTranscript = "Escuchando...";
     renderApp();
     
-    // Simular transcripción de voz IA progresiva
     let texts = [
-      "Siendo las 15:48 hs, me constituyo en el domicilio de Malabia 2340...",
-      "Siendo las 15:48 hs, me constituyo en el domicilio de Malabia 2340. Procedo a llamar al timbre...",
-      "Siendo las 15:48 hs, me constituyo en el domicilio de Malabia 2340. Procedo a llamar al timbre y soy atendido por quien dice ser Sergio Rocha, quien acredita su identidad mediante DNI..."
+      "Siendo las 15:48 hs, me constituyo en el domicilio de Costa Rica 4820...",
+      "Siendo las 15:48 hs, me constituyo en el domicilio de Costa Rica 4820, procedo a llamar al timbre...",
+      "Siendo las 15:48 hs, me constituyo en el domicilio de Costa Rica 4820, procedo a llamar al timbre y soy atendido por Yamila Abdurraman, quien acredita identidad."
     ];
     
-    let tIndex = 0;
+    let i = 0;
     const interval = setInterval(() => {
       if (!state.isRecordingAudio) {
         clearInterval(interval);
         return;
       }
-      state.audioTranscript = texts[tIndex];
-      tIndex++;
+      state.audioTranscript = texts[i];
+      i++;
       renderApp();
-      if (tIndex >= texts.length) {
+      if (i >= texts.length) {
         clearInterval(interval);
         state.isRecordingAudio = false;
         renderApp();
@@ -1026,10 +1094,8 @@ function toggleAudioRecording() {
 }
 
 function saveTranscriptAndNext() {
-  const input = document.getElementById("acta-text");
-  if (input) {
-    state.audioTranscript = input.value;
-  }
+  const ta = document.getElementById("acta-text");
+  if (ta) state.audioTranscript = ta.value;
   nextStep();
 }
 
@@ -1044,29 +1110,24 @@ function simulateSignature() {
 }
 
 function simulateSmsOtp() {
-  state.witnessOtpSent = true;
   state.witnessOtpVerified = true;
+  state.witnessOtpSent = true;
   renderApp();
 }
 
 function finalizeTask(id) {
-  // Guardar estado completado de la constatación
   const task = state.comisariaOficios.find(o => o.id === id);
-  if (task) {
-    task.estado = "Completada";
-  }
+  if (task) task.estado = "Completada";
   
   state.tab = "tareas";
   state.activeTask = null;
-  state.taskStep = 0;
   
-  // Render de éxito
   const contentEl = document.getElementById("app-content");
   contentEl.innerHTML = `
     <div class="success-screen">
       <div class="success-icon-wrap">✓</div>
-      <h2 class="success-title">Constatación Finalizada y Firmada</h2>
-      <p class="success-desc">El acta de constatación Nº ${id} ha sido firmada digitalmente y transmitida por sistema EJE de la CABA al Juzgado solicitante.</p>
+      <h2 class="success-title">Constatación Exitosa</h2>
+      <p class="success-desc">El acta de constatación Nº ${id} fue firmada digitalmente y transmitida de forma segura a través del sistema EJE de CABA.</p>
       <button class="btn-large primary" onclick="switchTab('tareas')">Volver a mis tareas</button>
     </div>
   `;
@@ -1075,15 +1136,13 @@ function finalizeTask(id) {
 function finalizeProbation() {
   state.tab = "tareas";
   state.activeTask = null;
-  state.taskStep = 0;
-  
   const contentEl = document.getElementById("app-content");
   contentEl.innerHTML = `
     <div class="success-screen">
       <div class="success-icon-wrap" style="background:var(--purple-bg); color:var(--purple);">✓</div>
-      <h2 class="success-title">Control de Probation Reportado</h2>
-      <p class="success-desc">Se cargó el informe de control de conducta de Sergio Rocha en el legajo del Juzgado Penal, Contravencional y de Faltas Nº 12.</p>
-      <button class="btn-large primary" onclick="switchTab('tareas')">Volver a mis tareas</button>
+      <h2 class="success-title">Control Guardado</h2>
+      <p class="success-desc">El control de conducta de Sergio Rocha fue enviado al Juzgado Penal Contravencional y de Faltas Nº 12.</p>
+      <button class="btn-large primary" onclick="switchTab('tareas')">Volver a tareas</button>
     </div>
   `;
 }
@@ -1091,157 +1150,55 @@ function finalizeProbation() {
 function finalizeFeVida() {
   state.tab = "fe_vida";
   state.activeTask = null;
-  state.taskStep = 0;
-  
   const contentEl = document.getElementById("app-content");
   contentEl.innerHTML = `
     <div class="success-screen">
       <div class="success-icon-wrap" style="background:var(--amber-bg); color:var(--amber);">✓</div>
-      <h2 class="success-title">Supervivencia Acreditada</h2>
-      <p class="success-desc">Se emitió el Certificado de Fe de Vida de Juan Manuel Bermúdez. Se envió copia automática al Registro Nacional de Reincidencia (RNR), ANSES y a la app miBA del ciudadano.</p>
-      <button class="btn-large primary" onclick="switchTab('fe_vida')">Volver a Fe de Vida</button>
+      <h2 class="success-title">Fe de Vida Validada</h2>
+      <p class="success-desc">La supervivencia fue verificada y enviada a la base de datos de ANSES de manera automática.</p>
+      <button class="btn-large primary" onclick="switchTab('fe_vida')">Volver</button>
     </div>
   `;
 }
 
-function showOficioDetail(id) {
-  const task = state.comisariaOficios.find(o => o.id === id);
-  if (!task) return;
-  
-  const modal = document.createElement("div");
-  modal.className = "oficio-modal";
-  modal.id = "oficio-modal-el";
-  modal.innerHTML = `
-    <div class="oficio-sheet">
-      <div class="sheet-header">
-        <span class="sheet-title">Oficio Judicial ${task.id}</span>
-        <button class="sheet-close" onclick="closeOficioModal()">✕</button>
-      </div>
-      <div style="font-size:12px; line-height:1.5; font-family:monospace; background:#0F172A; color:#22C55E; padding:12px; border-radius:8px; overflow-x:auto;">
-        PODER JUDICIAL DE LA CIUDAD AUTÓNOMA DE BUENOS AIRES<br>
-        JUZGADO EN LO PENAL, CONTRAVENCIONAL Y DE FALTAS Nº 12<br>
-        Sec. Nº 3 - Dra. Acosta, Mariana<br><br>
-        OFICIO Nº OF-2026-9081<br>
-        Causa: J-01-00078234-2/2026-0<br>
-        Carátula: ROCHA, Sergio Damián s/ CP 89 (Lesiones)<br><br>
-        Al Sr. Comisario de la Comisaría Vecinal 14-A:<br>
-        Tengo el agrado de dirigirme a Ud. a fin de solicitarle que por medio del personal de prevención de su dependencia se sirva disponer la CONSTATACIÓN DE DOMICILIO real e inquilinos del imputado Sr. ROCHA, Sergio Damián (DNI 32.114.897), debiendo certificar si habita efectivamente en la calle Malabia 2340, 3º 'B', Palermo, debiéndose recabar firmas de moradores e informar fachada.<br><br>
-        El informe deberá ser remitido por vía digital (sistema EJE) en el plazo improrrogable de 48 horas.<br><br>
-        Firma digital: Dra. Acosta, Mariana - Juez de Garantías.
-      </div>
-    </div>
-  `;
-  document.getElementById("container").appendChild(modal);
-}
-
-function closeOficioModal() {
-  const m = document.getElementById("oficio-modal-el");
-  if (m) m.remove();
-}
-
-function switchTab(tabId) {
-  state.tab = tabId;
-  state.activeTask = null;
-  state.taskStep = 0;
-  
-  const tabs = document.querySelectorAll(".nav-tab");
-  tabs.forEach(t => {
-    t.classList.toggle("active", t.dataset.tab === tabId);
-  });
-  
-  renderApp();
-}
-
 // ==========================================
-// SIMULACIÓN DE SEGURIDAD: BOTÓN ANTIPÁNICO
+// RENDER EMERGENCY ALERT MODAL
 // ==========================================
 
-function triggerMockEmergency() {
-  state.alertActive = true;
-  state.alertData = {
-    tipo: "BOTÓN ANTIPÁNICO / GEOCERCA INFRINGIDA",
-    causa: "Causa 78/26 s/ Violencia de Género",
-    victima: "RÍOS, Elena Victoria (Uriarte 1428)",
-    agresor: "ROCHA, Sergio Damián (DNI 32.114.897)",
-    posicionAgresor: "Uriarte y Costa Rica (A 120 metros)",
-    tiempoInfraccion: "Hace 15 segundos",
-    distanciaVictima: "120 metros de la víctima (Umbral de pánico: 500m)"
-  };
-  renderApp();
-}
-
-function renderEmergencyAlert() {
-  const contentEl = document.getElementById("app-content");
-  contentEl.innerHTML = `
+function renderEmergencyModal() {
+  const modalId = "emergency-modal-container";
+  let modalEl = document.getElementById(modalId);
+  
+  if (!modalEl) {
+    modalEl = document.createElement("div");
+    modalEl.id = modalId;
+    document.body.appendChild(modalEl);
+  }
+  
+  modalEl.innerHTML = `
     <div class="emergency-alert">
       <div class="alert-dialog">
         <div class="alert-icon-ring">🚨</div>
         <h2 class="alert-title">¡ALERTA PERIMETRAL VIGENTE!</h2>
-        <div class="alert-desc">
+        <p class="alert-desc">
           El dispositivo de monitoreo (Tobillera GPS) reporta infracción del límite perimetral en tu cuadrante de patrullaje.
-        </div>
-        
+        </p>
         <div class="alert-meta-box">
-          <div class="alert-meta-row"><b>Víctima protegida:</b> <span>Elena Ríos (Uriarte 1428)</span></div>
-          <div class="alert-meta-row"><b>Agresor monitoreado:</b> <span style="color:var(--red); font-weight:700;">Sergio Rocha</span></div>
-          <div class="alert-meta-row"><b>Estado de exclusión:</b> <span style="color:var(--red);">Radio 500m INFRINGIDO</span></div>
-          <div class="alert-meta-row"><b>Ubicación agresor:</b> <span>Costa Rica y Uriarte (A 120m)</span></div>
+          <div class="alert-meta-row"><b>Víctima:</b> <span>Elena Ríos (Uriarte 1428)</span></div>
+          <div class="alert-meta-row"><b>Agresor:</b> <span style="color:var(--red); font-weight:700;">Sergio Rocha</span></div>
+          <div class="alert-meta-row"><b>Estado:</b> <span style="color:var(--red); font-weight:700;">INFRINGIDO</span></div>
+          <div class="alert-meta-row"><b>Distancia:</b> <span>A ${state.agresorDist}m de la víctima (Umbral: 500m)</span></div>
         </div>
-        
         <div style="display:flex; flex-direction:column; gap:10px;">
           <button class="btn-large danger" onclick="acceptEmergency()">Aceptar Despacho e Intervenir ➔</button>
-          <button class="btn-large secondary" onclick="closeEmergency()">Descartar / Apoyo Despachado</button>
+          <button class="btn-large secondary" onclick="closeEmergency()">Apoyo Despachado / Descartar</button>
         </div>
       </div>
     </div>
   `;
 }
 
-function acceptEmergency() {
-  state.alertActive = false;
-  state.tab = "mapa";
-  renderApp();
-  
-  // Al cambiar al mapa, centramos el pin y mostramos la ruta
-  setTimeout(() => {
-    alert("Navegación GPS iniciada: Dirígete a Uriarte 1428 de inmediato. Móvil 4232 despachado como refuerzo.");
-  }, 100);
-}
-
-function closeEmergency() {
-  state.alertActive = false;
-  state.alertData = null;
-  renderApp();
-}
-
-// Simular movimiento del agresor hacia el perímetro en segundo plano para dar realismo al mapa
-function simulateAggressorMovement() {
-  let isMovingLeft = true;
-  setInterval(() => {
-    if (state.tab === 'mapa' && !state.alertActive) {
-      const pin = document.getElementById("agresor-pin");
-      if (pin) {
-        // Mover el pin ligeramente de forma visual
-        let top = parseFloat(pin.style.top);
-        let left = parseFloat(pin.style.left);
-        
-        if (isMovingLeft) {
-          left -= 2;
-          top -= 1;
-          if (left <= 45) {
-            isMovingLeft = false;
-            // Disparar alarma si se acerca demasiado
-            triggerMockEmergency();
-          }
-        } else {
-          left += 2;
-          top += 1;
-          if (left >= 75) isMovingLeft = true;
-        }
-        
-        pin.style.left = left + "%";
-        pin.style.top = top + "%";
-      }
-    }
-  }, 3000);
+function renderEmergencyAlert() {
+  // Sobrescribe renderEmergencyAlert heredado para usar renderEmergencyModal
+  triggerMockEmergency();
 }
