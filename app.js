@@ -520,15 +520,17 @@ function renderPrecinctView() {
           <div><b style="color:#94A3B8;">Tipo:</b> ${state.ocrData.tipo}</div>
           <div><b style="color:#94A3B8;">Sujeto:</b> ${state.ocrData.sujeto}</div>
           <div><b style="color:#94A3B8;">Dirección:</b> <span style="color:var(--pc-gold); font-weight:700;">${state.ocrData.direccion}</span></div>
-          <div><b style="color:#94A3B8;">Juez Solicitante:</b> ${state.ocrData.origen}</div>
+          <div><b style="color:#94A3B8;">Causa Ref:</b> ${state.ocrData.causa}</div>
         </div>
         
         <div style="border-top:1px solid #334155; margin-top:10px; padding-top:10px;">
-          <div style="font-size:11px; font-weight:700; color:#94A3B8; text-transform:uppercase; margin-bottom:6px;">Despacho por Proximidad GPS</div>
-          <div style="font-size:12px; margin-bottom:8px;">
-            Oficial más cercano: <b style="color:var(--pc-blue-bright);">Oficial Aguirre</b> (a 180 metros).
+          <div style="font-size:11px; font-weight:700; color:#94A3B8; text-transform:uppercase; margin-bottom:6px;">Despacho Inteligente (SISEP)</div>
+          <div style="font-size:12px; margin-bottom:8px; line-height:1.4;">
+            Asignado por proximidad al móvil libre más cercano:<br>
+            🚀 <b style="color:var(--pc-blue-bright);">Oficial Aguirre</b> (Móvil 4231) a <b>180 metros</b>.
+            <br><span style="font-size:10px; color:var(--text-muted);">Nota: Móvil 4233 está a 90m pero posee Consigna Fija.</span>
           </div>
-          <button class="btn-large gold" style="height:38px; font-size:12.5px;" onclick="dispatchOficio()">Despachar a Oficial Aguirre ➔</button>
+          <button class="btn-large gold" style="height:38px; font-size:12.5px;" onclick="dispatchOficio()">Confirmar Despacho a Oficial Aguirre ➔</button>
         </div>
       </div>
     `;
@@ -559,29 +561,70 @@ function renderPrecinctView() {
       </div>
     </div>
     
-    <!-- Columna de Carga y Despacho Georreferenciado -->
+    <!-- Columna de Carga y Despacho Georreferenciado (SISEP) -->
     <div style="display:flex; flex-direction:column; gap:16px;">
       <div class="console-card">
         <div class="console-section-title">Carga de Documento</div>
         ${ocrWidgetHtml}
       </div>
       
-      <div class="console-card" style="flex:1;">
-        <div class="console-section-title">Oficiales Activos en Cuadrante</div>
-        <div style="display:flex; flex-direction:column; gap:10px; font-size:12.5px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:#0F172A; border-radius:8px; border-left:4px solid var(--pc-blue-bright);">
-            <div>
-              <b>Oficial Aguirre, M. (Móvil 4231)</b>
-              <div style="font-size:10.5px; color:var(--text-muted);">Última actividad: Justo ahora · GPS Activo</div>
+      <div class="console-card" style="flex:1; display:flex; flex-direction:column;">
+        <div class="console-section-title">SISEP · Monitoreo de Recursos</div>
+        
+        <!-- Mapa SISEP con círculos de asignación -->
+        <div class="sisep-map-container">
+          <!-- Círculos de cobertura visualizados del SISEP -->
+          <div class="sisep-ring green" style="top: 45%; left: 38%; width: 90px; height: 90px;"></div>
+          <div class="sisep-ring yellow" style="top: 25%; left: 65%; width: 70px; height: 70px;"></div>
+          <div class="sisep-ring red" style="top: 30%; left: 24%; width: 80px; height: 80px;"></div>
+          
+          <!-- Destino del Oficio si está cargado -->
+          ${state.ocrStatus === 'ready' ? `<div class="sisep-target" style="top: 35%; left: 30%;">📍</div>` : ''}
+          
+          <!-- Pines de los oficiales geoposicionados -->
+          <div class="sisep-pin green" style="top: 45%; left: 38%;" title="Oficial Aguirre (Libre)">4231</div>
+          <div class="sisep-pin yellow" style="top: 25%; left: 65%;" title="Oficial Pérez (Ocupado)">4232</div>
+          <div class="sisep-pin red" style="top: 30%; left: 24%;" title="Oficial Gómez (Consigna Fija)">4233</div>
+          
+          <svg class="sisep-map-svg" viewBox="0 0 400 300">
+            <!-- Calles en el mapa de CABA -->
+            <line x1="0" y1="50" x2="400" y2="50" stroke="#334155" stroke-width="2" />
+            <line x1="0" y1="120" x2="400" y2="120" stroke="#334155" stroke-width="3" />
+            <line x1="0" y1="210" x2="400" y2="210" stroke="#334155" stroke-width="2" />
+            
+            <line x1="120" y1="0" x2="120" y2="300" stroke="#334155" stroke-width="2" />
+            <line x1="220" y1="0" x2="220" y2="300" stroke="#334155" stroke-width="2" />
+            <line x1="310" y1="0" x2="310" y2="300" stroke="#334155" stroke-width="2" />
+          </svg>
+        </div>
+        
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <!-- Lista de patrullas y su disponibilidad en SISEP -->
+          <div class="officer-row locked">
+            <div style="font-size:12px;">
+              <span class="officer-status-dot red"></span>
+              <b>Oficial Gómez, M. (Móvil 4233)</b>
+              <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">Consigna Fija · Causa Restricción 102/25 (Exclusivo) · A 90m</div>
             </div>
-            <span class="chip chip-green">Libre</span>
+            <span style="font-size:10.5px; font-weight:700; color:var(--red);">🔒 Consigna</span>
           </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:#0F172A; border-radius:8px; border-left:4px solid #475569; opacity:0.6;">
-            <div>
-              <b>Oficial Pérez, J. (Móvil 4232)</b>
-              <div style="font-size:10.5px; color:var(--text-muted);">Última actividad: hace 12 min · GPS Activo</div>
+          
+          <div class="officer-row closest">
+            <div style="font-size:12px;">
+              <span class="officer-status-dot green"></span>
+              <b>Oficial Aguirre, M. (Móvil 4231)</b>
+              <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">Libre · Patrullando móvil · A 180m</div>
             </div>
-            <span class="chip chip-amber">Ocupado</span>
+            <span class="chip chip-green" style="font-size:7px;">✓ Seleccionado</span>
+          </div>
+          
+          <div class="officer-row">
+            <div style="font-size:12px;">
+              <span class="officer-status-dot yellow"></span>
+              <b>Oficial Pérez, J. (Móvil 4232)</b>
+              <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">Ocupado (Trámite activo) · A 850m</div>
+            </div>
+            <span class="chip chip-amber" style="font-size:7px;">Ocupado</span>
           </div>
         </div>
       </div>
