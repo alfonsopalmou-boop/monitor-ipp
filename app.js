@@ -603,12 +603,12 @@ function triggerSimulateOcr() {
       id: "OF-2026-1157",
       origen: "Juzgado Penal Contravencional y de Faltas Nº 2",
       juez: "Dr. Ferreira",
-      causa: "Nº 115790/2026 s/ Excarcelación",
-      tipo: "Constatación de Domicilio (Urgente - Excarcelación)",
+      causa: "Nº 115790/26 s/ Excarcelación (Detenido)",
+      tipo: "Constatación de Domicilio",
       sujeto: "ABDURRAMAN, Yamila (DNI 27.580.092)",
       direccion: "Costa Rica 4820, CABA",
       distancia: "180 metros",
-      prioridad: "CRÍTICA",
+      prioridad: "CRÍTICA (Urgente Detenido)",
       plazo: "4 horas (Libertad)",
       comisaria: "Comisaría Vecinal 14-A",
       estado: "Pendiente"
@@ -629,8 +629,8 @@ function dispatchOficio() {
   setTimeout(() => {
     const pushEl = document.getElementById("push-notif");
     if (pushEl) {
-      document.getElementById("push-title").textContent = "Nuevo Oficio Asignado ⚖ (URGENTE)";
-      document.getElementById("push-text").textContent = "Constatación Excarcelación - Abdurraman, Y. en Costa Rica 4820 (a 180m).";
+      document.getElementById("push-title").textContent = "Nuevo Oficio Asignado ⚖";
+      document.getElementById("push-text").textContent = "Constatación de Domicilio - Causa Excarcelación (Detenido) - Abdurraman, Y.";
       pushEl.classList.add("show");
       
       playBeep();
@@ -641,7 +641,6 @@ function dispatchOficio() {
     }
   }, 1000);
 }
-
 
 function playBeep() {
   try {
@@ -921,8 +920,8 @@ function renderConstatacionFlow(container, task) {
           <div class="scanner-viewfinder"><div class="scan-line"></div></div>
           <div class="scanner-hint">Enfocar código de barras del DNI</div>
         </div>
-        <button class="btn-large gold" style="margin-top:14px;" onclick="simulateDniScan('27580092')">Simular DNI Abdurraman (Habeas)</button>
-        <button class="btn-large secondary" style="margin-top:8px;" onclick="simulateDniScan('32114897')">Simular DNI Rocha (Probation)</button>
+        <button class="btn-large gold" style="margin-top:14px;" onclick="simulateDniScan('27580092')">Simular DNI Abdurraman (Excarcelación)</button>
+        <button class="btn-large secondary" style="margin-top:8px;" onclick="simulateDniScan('32114897')">Simular DNI Rocha (Prisión Domiciliaria)</button>
       `}
     `;
   } else if (step === 2) {
