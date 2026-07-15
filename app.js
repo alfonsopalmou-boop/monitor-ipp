@@ -536,39 +536,10 @@ function renderPrecinctView() {
     `;
   }
 
-  container.innerHTML = `
-    <!-- Columna de Oficios Recibidos en Comisaría -->
-    <div style="display:flex; flex-direction:column; gap:16px;">
-      <div class="console-card" style="flex:1;">
-        <div class="console-section-title">
-          <span>Bandeja de Entrada de Oficios</span>
-          <span style="font-size:10px; background:#334155; padding:2px 8px; border-radius:10px;">Comisaría 14-A</span>
-        </div>
-        <table class="console-table">
-          <thead>
-            <tr>
-              <th>ID Oficio</th>
-              <th>Trámite</th>
-              <th>Sujeto</th>
-              <th>Prioridad</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${oficiosTabla}
-          </tbody>
-        </table>
-      </div>
-    </div>
-    
-    <!-- Columna de Carga y Despacho Georreferenciado (SISEP) -->
-    <div style="display:flex; flex-direction:column; gap:16px;">
-      <div class="console-card">
-        <div class="console-section-title">Carga de Documento</div>
-        ${ocrWidgetHtml}
-      </div>
-      
-      <div class="console-card" style="flex:1; display:flex; flex-direction:column;">
+  let sisepMapWidgetHtml = "";
+  if (state.ocrStatus === 'ready') {
+    sisepMapWidgetHtml = `
+      <div class="console-card" style="flex:1; display:flex; flex-direction:column; animation: slideDown 0.3s ease-out;">
         <div class="console-section-title">SISEP · Monitoreo de Recursos</div>
         
         <!-- Mapa SISEP con círculos de asignación -->
@@ -578,8 +549,8 @@ function renderPrecinctView() {
           <div class="sisep-ring yellow" style="top: 25%; left: 65%; width: 70px; height: 70px;"></div>
           <div class="sisep-ring red" style="top: 30%; left: 24%; width: 80px; height: 80px;"></div>
           
-          <!-- Destino del Oficio si está cargado -->
-          ${state.ocrStatus === 'ready' ? `<div class="sisep-target" style="top: 35%; left: 30%;">📍</div>` : ''}
+          <!-- Destino del Oficio cargado -->
+          <div class="sisep-target" style="top: 35%; left: 30%;">📍</div>
           
           <!-- Pines de los oficiales geoposicionados -->
           <div class="sisep-pin green" style="top: 45%; left: 38%;" title="Oficial Aguirre (Libre)">4231</div>
@@ -628,6 +599,52 @@ function renderPrecinctView() {
           </div>
         </div>
       </div>
+    `;
+  } else {
+    sisepMapWidgetHtml = `
+      <div class="console-card" style="text-align:center; padding: 48px 20px; color: #64748B; flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; border: 1px dashed #334155; background: #0f172a; border-radius: 16px;">
+        <span style="font-size:42px; opacity:0.5; margin-bottom:12px;">🗺️</span>
+        <div style="font-weight:700; color:#fff; font-size:14px;">Consola de Monitoreo SISEP Inactiva</div>
+        <div style="font-size:11.5px; color:#94A3B8; margin-top:6px; max-width:240px; line-height:1.4;">
+          El sistema está a la espera de que se cargue y detecte el domicilio a constatar para geolocalizar los recursos en tiempo real.
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = `
+    <!-- Columna de Oficios Recibidos en Comisaría -->
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div class="console-card" style="flex:1;">
+        <div class="console-section-title">
+          <span>Bandeja de Entrada de Oficios</span>
+          <span style="font-size:10px; background:#334155; padding:2px 8px; border-radius:10px;">Comisaría 14-A</span>
+        </div>
+        <table class="console-table">
+          <thead>
+            <tr>
+              <th>ID Oficio</th>
+              <th>Trámite</th>
+              <th>Sujeto</th>
+              <th>Prioridad</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${oficiosTabla}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- Columna de Carga y Despacho Georreferenciado (SISEP) -->
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div class="console-card">
+        <div class="console-section-title">Carga de Documento</div>
+        ${ocrWidgetHtml}
+      </div>
+      
+      ${sisepMapWidgetHtml}
     </div>
   `;
 }
