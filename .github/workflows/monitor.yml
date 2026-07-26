@@ -1,39 +1,32 @@
-name: Monitor IPP
+name: Monitor IPP (backstop ping)
+
+# Dispara el endpoint /run del Cloudflare Worker como RED DE RESPALDO.
+# El Worker es el motor principal (cron real */5 en Cloudflare). Este ping
+# solo garantiza que, si el cron de Cloudflare se saltea o demora, la causa
+# igual se levante. Comparte el mismo KV que el Worker -> NUNCA duplica alertas.
 
 on:
+  schedule:
+    - cron: '*/5 * * * *'   # GitHub hace best-effort (suele espaciar a ~1-2h); alcanza como backstop
   workflow_dispatch:
-
-permissions:
-  contents: write
 
 concurrency:
   group: monitor-ipp
   cancel-in-progress: false
 
 jobs:
-  monitor:
+  ping:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: pip install requests
-      - name: Ejecutar monitor
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python monitor_ipp.py
-      - name: Guardar IDs conocidos
+      - name: Disparar Worker /run (comparte KV, no duplica)
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add known_ids.json
-          git diff --cached --quiet && exit 0
-          git commit -m "Actualizar known_ids.json"
-          for i in 1 2 3 4 5; do
-            git pull --rebase origin main && git push && exit 0
-            sleep $((RANDOM % 5 + 2))
+          echo "Ping de respaldo al Worker /run..."
+          for i in 1 2 3; do
+            resp=$(curl -s --max-time 60 "https://monitor-ipp.alfonso-palmou.workers.dev/run")
+            echo "$resp"
+            echo "$resp" | grep -q '"success": true' && exit 0
+            echo "Reintentando en 5s..."
+            sleep 5
           done
-          echo "No se pudo pushear known_ids.json despues de 5 intentos"
+          echo "El Worker no respondio success tras 3 intentos"
           exit 1
